@@ -12,7 +12,7 @@ export default function Footer() {
         <div className="grid md:grid-cols-[1.4fr_1fr_1fr_1fr] gap-10 mb-16">
           <div>
             <p className="font-display font-extrabold text-2xl text-bone mb-4">
-              HAUS DES <span className="text-amber">//</span> DÖNERS
+              SAMİ´S <span className="text-amber">//</span> DÖNER
             </p>
             <p className="text-smoke text-sm max-w-xs leading-relaxed mb-4">
               {t.footer.description}

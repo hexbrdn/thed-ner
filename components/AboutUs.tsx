@@ -48,7 +48,7 @@ export default function AboutUs() {
               </div>
             </div>
             <div className="pt-6 border-t border-line mt-6 tag text-smoke">
-              HAUS DES DÖNERS // EST. 2019
+              SAMİ´S DÖNER // STRAßKIRCHEN
             </div>
           </div>
         </div>

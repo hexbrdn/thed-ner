@@ -38,7 +38,7 @@ export default function Navbar() {
 
       <nav className="max-w-[1400px] mx-auto flex items-center justify-between px-6 md:px-10 py-4">
         <a href="#top" className="focus-ring font-display font-extrabold text-lg md:text-xl tracking-tight text-bone shrink-0">
-          HAUS DES <span className="text-amber">//</span> DÖNERS
+          SAMİ´S <span className="text-amber">//</span> DÖNER
         </a>
 
         {/* Desktop Links */}
