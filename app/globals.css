@@ -1,0 +1,267 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: "Unbounded", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --font-body: "Inter", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #070604;
+  scroll-behavior: auto;
+}
+
+body {
+  background:
+    linear-gradient(180deg, rgba(255, 61, 18, 0.08), transparent 420px),
+    #070604;
+  color: #FFF6E8;
+  font-family: var(--font-body);
+  overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: #FFC247;
+  color: #070604;
+}
+
+/* thin cyber scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #11100C;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #FF3D12, #FFC247);
+  border-radius: 999px;
+}
+
+.grain-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background-image: url('/assets/noise.png');
+  background-size: 256px 256px;
+  mix-blend-mode: overlay;
+  opacity: 0.34;
+}
+
+.hud-line {
+  border-color: #34291F;
+}
+
+.tag {
+  font-family: var(--font-mono);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+}
+
+.text-outline {
+  -webkit-text-stroke: 1px #FFF6E8;
+  color: transparent;
+}
+
+.focus-ring {
+  outline: 2px solid transparent;
+  outline-offset: 3px;
+}
+
+.focus-ring:focus-visible {
+  outline-color: #FFC247;
+}
+
+.ember-surface {
+  background:
+    linear-gradient(135deg, rgba(255, 61, 18, 0.15), transparent 34%),
+    linear-gradient(180deg, rgba(255, 246, 232, 0.035), transparent),
+    #191610;
+}
+
+.kinetic-card {
+  transform: translateZ(0);
+  will-change: transform, border-color, background-color;
+}
+
+.kinetic-card:hover {
+  transform: translate3d(0, -4px, 0);
+}
+
+.accent-rail {
+  position: relative;
+}
+
+.accent-rail::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, #FF3D12, #FFC247, #7BD66F);
+  opacity: 0.9;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+.scanline {
+  animation: scanline 6s linear infinite;
+  will-change: transform;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+.pulse-glow {
+  animation: pulseGlow 2.4s ease-in-out infinite;
+  will-change: opacity;
+}
+
+@keyframes firePulse {
+  0%, 100% {
+    opacity: 0.78;
+    transform: scale3d(1, 1, 1);
+    filter: saturate(1.05);
+  }
+  45% {
+    opacity: 1;
+    transform: scale3d(1.04, 1.02, 1);
+    filter: saturate(1.35);
+  }
+  70% {
+    opacity: 0.88;
+    transform: scale3d(0.99, 1.04, 1);
+    filter: saturate(1.18);
+  }
+}
+
+.hero-fire-pulse {
+  animation: firePulse 3.8s ease-in-out infinite;
+  mix-blend-mode: screen;
+  will-change: transform, opacity, filter;
+}
+
+@keyframes flameLick {
+  0%, 100% {
+    transform: translate3d(-2%, 7%, 0) scale3d(1.04, 0.92, 1);
+    opacity: 0.56;
+  }
+  35% {
+    transform: translate3d(2%, -2%, 0) scale3d(1.12, 1.08, 1);
+    opacity: 0.88;
+  }
+  64% {
+    transform: translate3d(-1%, -7%, 0) scale3d(0.98, 1.18, 1);
+    opacity: 0.72;
+  }
+}
+
+.hero-flame-field {
+  background:
+    radial-gradient(ellipse 13% 68% at 23% 100%, rgba(255, 61, 18, 0.72), transparent 72%),
+    radial-gradient(ellipse 15% 76% at 38% 102%, rgba(255, 194, 71, 0.64), transparent 74%),
+    radial-gradient(ellipse 18% 82% at 52% 100%, rgba(255, 61, 18, 0.74), transparent 72%),
+    radial-gradient(ellipse 12% 64% at 66% 103%, rgba(255, 122, 26, 0.62), transparent 72%),
+    radial-gradient(ellipse 16% 72% at 79% 100%, rgba(255, 194, 71, 0.48), transparent 74%),
+    linear-gradient(180deg, transparent 0%, rgba(255, 61, 18, 0.16) 46%, rgba(255, 61, 18, 0.42) 100%);
+  filter: blur(22px) saturate(1.5);
+  animation: flameLick 4.6s ease-in-out infinite;
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+
+@keyframes heatHaze {
+  0%, 100% {
+    transform: translate3d(0, 3%, 0) skewX(-1deg);
+    opacity: 0.32;
+  }
+  50% {
+    transform: translate3d(0, -2%, 0) skewX(1.2deg);
+    opacity: 0.52;
+  }
+}
+
+.hero-heat-haze {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 24px,
+      rgba(255, 194, 71, 0.055) 24px 28px,
+      transparent 28px 54px
+    ),
+    radial-gradient(ellipse 70% 45% at 50% 78%, rgba(255, 122, 26, 0.18), transparent 72%);
+  filter: blur(18px);
+  animation: heatHaze 5.2s ease-in-out infinite;
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.spin-slow {
+  animation: spin-slow 40s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .kinetic-card:hover {
+    transform: none;
+  }
+
+  .hero-fire-pulse,
+  .hero-flame-field,
+  .hero-heat-haze {
+    animation: none !important;
+  }
+}
+
+/* ---- KATMAN KATMAN bölümü: atmosfer efektleri ---- */
+
+/* köz kıvılcımları: aşağıdan yukarı süzülür, yatay sapma --drift ile verilir */
+@keyframes emberRise {
+  0%   { transform: translate3d(0, 0, 0) scale(0.5); opacity: 0; }
+  8%   { opacity: var(--peak, 0.9); }
+  70%  { opacity: var(--peak, 0.9); }
+  100% { transform: translate3d(var(--drift, 0px), calc(-1 * var(--rise, 70vh)), 0) scale(1); opacity: 0; }
+}
+.ember {
+  animation-name: emberRise;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+
+/* çok yavaş sürüklenen duman perdesi */
+@keyframes smokeDrift {
+  0%   { transform: translate3d(-4%, 3%, 0) scale(1.05); opacity: 0.10; }
+  50%  { transform: translate3d(5%, -2%, 0) scale(1.2);  opacity: 0.22; }
+  100% { transform: translate3d(-4%, 3%, 0) scale(1.05); opacity: 0.10; }
+}
+.smoke-drift {
+  animation: smokeDrift 26s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* hareket azaltma tercihinde partikülleri tamamen gizle:
+   yukarıdaki global kural süreyi 0'a çekince kıvılcımlar donuk nokta olarak kalıyordu */
+@media (prefers-reduced-motion: reduce) {
+  .ember, .smoke-drift { display: none; }
+}
