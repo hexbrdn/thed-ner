@@ -188,11 +188,15 @@ export default function Hero() {
 
       {/* Katmanlama: arka başlık */}
       <div ref={titleGroup} className="absolute inset-0 z-10 pointer-events-none">
-        <div ref={titleBack} className="absolute inset-x-0 top-[28%] text-center px-6">
-          <h1 className="font-display font-black leading-[0.9] text-[11vw] md:text-[7.5vw] text-bone">
-            <span className="hero-title-line block">{t.hero.titleLine1}</span>
-          </h1>
-        </div>
+        {/* Bu satır dile göre boş olabilir; boşken hiç basılmaz ki
+            şişin arkasında ölçü kaplayan boş bir başlık kalmasın. */}
+        {t.hero.titleLine1 ? (
+          <div ref={titleBack} className="absolute inset-x-0 top-[28%] text-center px-6">
+            <h1 className="font-display font-black leading-[0.9] text-[11vw] md:text-[7.5vw] text-bone">
+              <span className="hero-title-line block">{t.hero.titleLine1}</span>
+            </h1>
+          </div>
+        ) : null}
       </div>
 
       {/* öndeki şiş */}

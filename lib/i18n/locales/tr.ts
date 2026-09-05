@@ -24,7 +24,7 @@ export const trTranslations = {
   },
   hero: {
     eyebrowTag: "Sami´s Döner // Straßkirchen",
-    titleLine1: "ODUN ATEŞİNDE",
+    titleLine1: "",
     titleLine2: "DÖNER",
     subTitle: "Taze, Lezzetli ve Kaliteli",
     description: "Taze malzemeler, enfes lezzet – Sami´s Döner Straßkirchen'de unutulmaz bir lezzet deneyimi sizi bekliyor!",

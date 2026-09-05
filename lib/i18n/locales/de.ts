@@ -28,7 +28,7 @@ export const deTranslations: Translations = {
   },
   hero: {
     eyebrowTag: "Sami´s Döner // Straßkirchen",
-    titleLine1: "FRISCH & LECKER",
+    titleLine1: "",
     titleLine2: "DÖNER",
     subTitle: "Dein Döner, dein Genuss",
     description: "Frische Zutaten, authentischer Geschmack – dein Geschmackserlebnis wartet bei Sami´s Döner in Straßkirchen!",
