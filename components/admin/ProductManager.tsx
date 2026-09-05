@@ -1,0 +1,575 @@
+"use client";
+
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { formatPrice, type Category, type Product, type Variant } from "@/lib/admin/types";
+import {
+  Badge,
+  Button,
+  ConfirmDialog,
+  Field,
+  Notice,
+  Select,
+  TextArea,
+  TextInput,
+  Toggle,
+} from "./ui";
+
+type Draft = {
+  name: string;
+  description: string;
+  categoryId: string;
+  price: string;
+  discountPrice: string;
+  image: string;
+  active: boolean;
+  inStock: boolean;
+  variants: { size: string; price: string }[];
+};
+
+function emptyDraft(categoryId: string): Draft {
+  return {
+    name: "",
+    description: "",
+    categoryId,
+    price: "",
+    discountPrice: "",
+    image: "",
+    active: true,
+    inStock: true,
+    variants: [],
+  };
+}
+
+function toDraft(product: Product): Draft {
+  return {
+    name: product.name,
+    description: product.description,
+    categoryId: product.categoryId,
+    price: String(product.price).replace(".", ","),
+    discountPrice:
+      product.discountPrice === null ? "" : String(product.discountPrice).replace(".", ","),
+    image: product.image ?? "",
+    active: product.active,
+    inStock: product.inStock,
+    variants: product.variants.map((v) => ({
+      size: v.size,
+      price: String(v.price).replace(".", ","),
+    })),
+  };
+}
+
+/** Formdaki metin alanlarını API'nin beklediği tiplere çevirir. */
+function toPayload(draft: Draft) {
+  const variants: { size: string; price: number }[] = draft.variants
+    .filter((v) => v.price.trim() !== "")
+    .map((v) => ({ size: v.size.trim(), price: Number(v.price.replace(",", ".")) }));
+
+  return {
+    name: draft.name.trim(),
+    description: draft.description.trim(),
+    categoryId: draft.categoryId,
+    price: Number(draft.price.replace(",", ".")),
+    discountPrice: draft.discountPrice.trim() === "" ? null : Number(draft.discountPrice.replace(",", ".")),
+    image: draft.image.trim() === "" ? null : draft.image.trim(),
+    active: draft.active,
+    inStock: draft.inStock,
+    variants,
+  };
+}
+
+export default function ProductManager({
+  initialProducts,
+  categories,
+  imageOptions,
+}: {
+  initialProducts: Product[];
+  categories: Category[];
+  imageOptions: string[];
+}) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
+
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [search, setSearch] = useState("");
+
+  const categoryName = useMemo(
+    () => new Map(categories.map((c) => [c.id, c.name])),
+    [categories]
+  );
+
+  const visible = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return initialProducts.filter((p) => {
+      if (categoryFilter && p.categoryId !== categoryFilter) return false;
+      if (needle && !p.name.toLowerCase().includes(needle)) return false;
+      return true;
+    });
+  }, [initialProducts, categoryFilter, search]);
+
+  async function send(url: string, method: string, body?: unknown) {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        setError(data.error ?? "İşlem başarısız oldu.");
+        return false;
+      }
+      // sunucu bileşenlerini tazele: liste ve dashboard güncellensin
+      router.refresh();
+      return true;
+    } catch {
+      setError("Sunucuya ulaşılamadı.");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveDraft() {
+    if (!draft) return;
+    const payload = toPayload(draft);
+    const ok = editing
+      ? await send(`/api/admin/products/${encodeURIComponent(editing.id)}`, "PATCH", payload)
+      : await send("/api/admin/products", "POST", payload);
+    if (ok) {
+      setDraft(null);
+      setEditing(null);
+    }
+  }
+
+  async function toggleActive(product: Product) {
+    await send(`/api/admin/products/${encodeURIComponent(product.id)}`, "PATCH", {
+      active: !product.active,
+    });
+  }
+
+  async function toggleStock(product: Product) {
+    await send(`/api/admin/products/${encodeURIComponent(product.id)}`, "PATCH", {
+      inStock: !product.inStock,
+    });
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    const ok = await send(
+      `/api/admin/products/${encodeURIComponent(pendingDelete.id)}`,
+      "DELETE"
+    );
+    if (ok) setPendingDelete(null);
+  }
+
+  const noCategories = categories.length === 0;
+
+  return (
+    <div className="max-w-[1200px]">
+      <header className="flex flex-wrap items-end justify-between gap-5 mb-8">
+        <div>
+          <p className="tag text-flame mb-2">Katalog</p>
+          <h1 className="font-display font-extrabold text-3xl md:text-4xl text-bone">Ürünler</h1>
+        </div>
+        <Button
+          onClick={() => {
+            setEditing(null);
+            setDraft(emptyDraft(categories[0]?.id ?? ""));
+            setError(null);
+          }}
+          disabled={noCategories}
+        >
+          + YENİ ÜRÜN
+        </Button>
+      </header>
+
+      {noCategories && (
+        <div className="mb-6">
+          <Notice
+            kind="error"
+            message="Ürün ekleyebilmek için önce en az bir kategori oluşturmalısınız."
+          />
+        </div>
+      )}
+
+      {error && !draft && (
+        <div className="mb-6">
+          <Notice kind="error" message={error} />
+        </div>
+      )}
+
+      {/* filtreler */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <TextInput
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Ürün adında ara…"
+          aria-label="Ürün ara"
+          className="sm:max-w-[280px]"
+        />
+        <Select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          aria-label="Kategoriye göre filtrele"
+          className="sm:max-w-[240px]"
+        >
+          <option value="">Tüm kategoriler</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </Select>
+        <span className="tag text-smoke self-center tabular-nums">
+          {visible.length} / {initialProducts.length} ürün
+        </span>
+      </div>
+
+      {/* liste */}
+      <ul className="border border-line divide-y divide-line">
+        {visible.map((product) => (
+          <li
+            key={product.id}
+            className="bg-char p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-4"
+          >
+            <div className="relative w-14 h-14 shrink-0 border border-line bg-panel overflow-hidden">
+              {product.image ? (
+                <Image
+                  src={product.image}
+                  alt=""
+                  fill
+                  sizes="56px"
+                  className="object-cover"
+                />
+              ) : (
+                <span className="absolute inset-0 grid place-items-center tag text-smoke/50">
+                  —
+                </span>
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <p className="font-display font-bold text-bone truncate">{product.name}</p>
+              <p className="tag text-smoke mt-1">
+                {categoryName.get(product.categoryId) ?? product.categoryId}
+              </p>
+              {product.description && (
+                <p className="text-xs text-smoke/70 mt-1.5 line-clamp-2">{product.description}</p>
+              )}
+            </div>
+
+            <div className="shrink-0 md:w-[140px] md:text-right">
+              {product.discountPrice !== null ? (
+                <>
+                  <p className="font-display font-bold text-amber tabular-nums">
+                    {formatPrice(product.discountPrice)}
+                  </p>
+                  <p className="text-xs text-smoke line-through tabular-nums">
+                    {formatPrice(product.price)}
+                  </p>
+                </>
+              ) : (
+                <p className="font-display font-bold text-bone tabular-nums">
+                  {formatPrice(product.price)}
+                </p>
+              )}
+              {product.variants.length > 1 && (
+                <p className="tag text-smoke/70 mt-1">{product.variants.length} varyasyon</p>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <Badge tone={product.active ? "on" : "off"}>
+                {product.active ? "AKTİF" : "PASİF"}
+              </Badge>
+              <Badge tone={product.inStock ? "on" : "warn"}>
+                {product.inStock ? "STOKTA" : "TÜKENDİ"}
+              </Badge>
+            </div>
+
+            <div className="flex flex-wrap gap-2 shrink-0">
+              <button
+                onClick={() => toggleActive(product)}
+                disabled={busy}
+                className="focus-ring tag border border-line px-3 py-2 text-smoke hover:border-amber hover:text-amber transition-colors disabled:opacity-40"
+              >
+                {product.active ? "GİZLE" : "YAYINLA"}
+              </button>
+              <button
+                onClick={() => toggleStock(product)}
+                disabled={busy}
+                className="focus-ring tag border border-line px-3 py-2 text-smoke hover:border-amber hover:text-amber transition-colors disabled:opacity-40"
+              >
+                {product.inStock ? "TÜKENDİ" : "STOĞA AL"}
+              </button>
+              <button
+                onClick={() => {
+                  setEditing(product);
+                  setDraft(toDraft(product));
+                  setError(null);
+                }}
+                className="focus-ring tag border border-line px-3 py-2 text-bone hover:border-amber hover:text-amber transition-colors"
+              >
+                DÜZENLE
+              </button>
+              <button
+                onClick={() => setPendingDelete(product)}
+                className="focus-ring tag border border-flame/50 px-3 py-2 text-flame hover:bg-flame hover:text-void transition-colors"
+              >
+                SİL
+              </button>
+            </div>
+          </li>
+        ))}
+
+        {visible.length === 0 && (
+          <li className="bg-char px-5 py-10 text-center text-sm text-smoke">
+            Aramanla eşleşen ürün yok.
+          </li>
+        )}
+      </ul>
+
+      {/* ekleme / düzenleme formu */}
+      {draft && (
+        <ProductForm
+          draft={draft}
+          setDraft={setDraft}
+          categories={categories}
+          imageOptions={imageOptions}
+          editing={editing}
+          error={error}
+          busy={busy}
+          onCancel={() => {
+            setDraft(null);
+            setEditing(null);
+            setError(null);
+          }}
+          onSave={saveDraft}
+        />
+      )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Ürünü sil"
+        message={`"${pendingDelete?.name ?? ""}" ürününü silmek istediğinize emin misiniz? Bu işlem geri alınamaz. Ürünü sadece satıştan kaldırmak istiyorsanız "GİZLE" seçeneğini kullanabilirsiniz.`}
+        confirmLabel="EVET, SİL"
+        busy={busy}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------- form */
+
+function ProductForm({
+  draft,
+  setDraft,
+  categories,
+  imageOptions,
+  editing,
+  error,
+  busy,
+  onCancel,
+  onSave,
+}: {
+  draft: Draft;
+  setDraft: (next: Draft) => void;
+  categories: Category[];
+  imageOptions: string[];
+  editing: Product | null;
+  error: string | null;
+  busy: boolean;
+  onCancel: () => void;
+  onSave: () => void;
+}) {
+  const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
+    setDraft({ ...draft, [key]: value });
+
+  const setVariant = (index: number, patch: Partial<{ size: string; price: string }>) => {
+    const variants = draft.variants.map((v, i) => (i === index ? { ...v, ...patch } : v));
+    setDraft({ ...draft, variants });
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={editing ? "Ürünü düzenle" : "Yeni ürün"}
+      className="fixed inset-0 z-[75] bg-void/85 backdrop-blur-sm overflow-y-auto p-4 md:p-8"
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSave();
+        }}
+        className="mx-auto w-full max-w-[720px] ember-surface border border-line p-6 md:p-9"
+      >
+        <h2 className="font-display font-extrabold text-2xl text-bone mb-7">
+          {editing ? "Ürünü düzenle" : "Yeni ürün"}
+        </h2>
+
+        <div className="space-y-5">
+          <Field label="Ürün adı">
+            <TextInput
+              required
+              maxLength={120}
+              value={draft.name}
+              onChange={(e) => set("name", e.target.value)}
+              placeholder="Döner-Tasche"
+            />
+          </Field>
+
+          <Field label="Açıklama">
+            <TextArea
+              maxLength={400}
+              value={draft.description}
+              onChange={(e) => set("description", e.target.value)}
+              placeholder="Dönerfleisch im Fladenbrot mit Salat und Sauce."
+            />
+          </Field>
+
+          <div className="grid sm:grid-cols-2 gap-5">
+            <Field label="Kategori">
+              <Select
+                required
+                value={draft.categoryId}
+                onChange={(e) => set("categoryId", e.target.value)}
+              >
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field label="Görsel" hint="Boş bırakılırsa görsel gösterilmez.">
+              <Select value={draft.image} onChange={(e) => set("image", e.target.value)}>
+                <option value="">Görsel yok</option>
+                {imageOptions.map((src) => (
+                  <option key={src} value={src}>
+                    {src.replace("/assets/", "")}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-5">
+            <Field label="Fiyat (€)">
+              <TextInput
+                required
+                inputMode="decimal"
+                value={draft.price}
+                onChange={(e) => set("price", e.target.value)}
+                placeholder="7,00"
+              />
+            </Field>
+
+            <Field label="İndirimli fiyat (€)" hint="Boş bırakılırsa indirim uygulanmaz.">
+              <TextInput
+                inputMode="decimal"
+                value={draft.discountPrice}
+                onChange={(e) => set("discountPrice", e.target.value)}
+                placeholder="—"
+              />
+            </Field>
+          </div>
+
+          {/* boyut varyasyonları */}
+          <div>
+            <span className="tag text-smoke block mb-2">
+              Boyut varyasyonları (kl. / gr. / 0,5 l …)
+            </span>
+            <div className="space-y-2">
+              {draft.variants.map((variant, index) => (
+                <div key={index} className="flex gap-2">
+                  <TextInput
+                    value={variant.size}
+                    onChange={(e) => setVariant(index, { size: e.target.value })}
+                    placeholder="kl."
+                    aria-label={`Varyasyon ${index + 1} adı`}
+                    className="flex-1"
+                  />
+                  <TextInput
+                    inputMode="decimal"
+                    value={variant.price}
+                    onChange={(e) => setVariant(index, { price: e.target.value })}
+                    placeholder="7,00"
+                    aria-label={`Varyasyon ${index + 1} fiyatı`}
+                    className="w-28"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDraft({
+                        ...draft,
+                        variants: draft.variants.filter((_, i) => i !== index),
+                      })
+                    }
+                    aria-label={`Varyasyon ${index + 1} sil`}
+                    className="focus-ring tag border border-line px-3 text-smoke hover:border-flame hover:text-flame transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                setDraft({ ...draft, variants: [...draft.variants, { size: "", price: "" }] })
+              }
+              className="focus-ring tag border border-line px-3 py-2 mt-2 text-smoke hover:border-amber hover:text-amber transition-colors"
+            >
+              + VARYASYON EKLE
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <Toggle
+              checked={draft.active}
+              onChange={(v) => set("active", v)}
+              onLabel="AKTİF — SİTEDE GÖRÜNÜR"
+              offLabel="PASİF — SİTEDE GİZLİ"
+            />
+            <Toggle
+              checked={draft.inStock}
+              onChange={(v) => set("inStock", v)}
+              onLabel="STOKTA"
+              offLabel="TÜKENDİ"
+            />
+          </div>
+
+          {error && <Notice kind="error" message={error} />}
+        </div>
+
+        <div className="flex flex-wrap gap-3 justify-end mt-9 pt-6 border-t border-line">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="focus-ring tag border border-line text-bone px-4 py-2.5 font-semibold hover:border-amber hover:text-amber transition-colors disabled:opacity-40"
+          >
+            VAZGEÇ
+          </button>
+          <Button type="submit" disabled={busy}>
+            {busy ? "KAYDEDİLİYOR…" : "KAYDET"}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}

@@ -12,8 +12,16 @@ import Reviews from "@/components/Reviews";
 import News from "@/components/News";
 import SocialMedia from "@/components/SocialMedia";
 import Footer from "@/components/Footer";
+import { getPublicMenu } from "@/lib/admin/store";
 
-export default function Home() {
+// Katalog admin panelinden değiştirilebildiği için sayfa her istekte
+// yeniden oluşturulur; yönetici bir ürünü değiştirdiğinde sayfa yenilenince
+// müşteri tarafına yansır.
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const menu = await getPublicMenu();
+
   return (
     <main className="bg-void">
       <Navbar />
@@ -24,7 +32,7 @@ export default function Home() {
       <FinalStack />
       <Products />
       <OrderBuilder />
-      <MenuGrid />
+      <MenuGrid menu={menu} />
       <Franchise />
       <Reviews />
       <News />
