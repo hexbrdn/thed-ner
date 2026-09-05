@@ -6,5 +6,6 @@ out
 next-env.d.ts
 *.tsbuildinfo
 
-# admin panelinin yazdığı katalog (çalışma anında üretilir)
-data/store/
+# katalogun kendisi repoda tutulur (salt okunur ortamlarda tohum verisi olarak
+# gerekli); yalnızca atomik yazmanın geçici dosyaları yok sayılır
+data/store/*.tmp

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin, badRequest } from "@/lib/admin/guard";
+import { requireAdmin, badRequest, storeWrite } from "@/lib/admin/guard";
 import { createProduct, getCatalog } from "@/lib/admin/store";
 import { parseProductBody } from "@/lib/admin/validate";
 import { slugify } from "@/lib/admin/types";
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   > &
     typeof parsed.value;
 
-  const product = await createProduct({
+  const product = await storeWrite(() => createProduct({
     id: `${value.categoryId}--${slugify(value.name) || "urun"}`,
     name: value.name,
     description: value.description ?? "",
@@ -46,7 +46,8 @@ export async function POST(request: Request) {
     active: value.active ?? true,
     inStock: value.inStock ?? true,
     variants: value.variants ?? [],
-  });
+  }));
+  if (product instanceof NextResponse) return product;
 
   return NextResponse.json(product, { status: 201 });
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin, badRequest, notFound } from "@/lib/admin/guard";
+import { requireAdmin, badRequest, notFound, storeWrite } from "@/lib/admin/guard";
 import { deleteProduct, getCatalog, updateProduct } from "@/lib/admin/store";
 import { parseProductBody } from "@/lib/admin/validate";
 
@@ -34,7 +34,8 @@ export async function PATCH(request: Request, { params }: Params) {
     return badRequest("İndirimli fiyat, normal fiyattan düşük olmalı.");
   }
 
-  const updated = await updateProduct(params.id, parsed.value);
+  const updated = await storeWrite(() => updateProduct(params.id, parsed.value));
+  if (updated instanceof NextResponse) return updated;
   if (!updated) return notFound("Ürün bulunamadı.");
   return NextResponse.json(updated);
 }
@@ -43,7 +44,8 @@ export async function DELETE(_request: Request, { params }: Params) {
   const denied = await requireAdmin();
   if (denied) return denied;
 
-  const removed = await deleteProduct(params.id);
+  const removed = await storeWrite(() => deleteProduct(params.id));
+  if (removed instanceof NextResponse) return removed;
   if (!removed) return notFound("Ürün bulunamadı.");
   return NextResponse.json({ ok: true });
 }

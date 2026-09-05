@@ -1,0 +1,550 @@
+{
+  "categories": [
+    {
+      "id": "fuer-sie-das-beste",
+      "name": "Für Sie Das Beste",
+      "sortOrder": 0
+    },
+    {
+      "id": "original-doener",
+      "name": "Original-DÖNER",
+      "sortOrder": 1
+    },
+    {
+      "id": "schueler-menue",
+      "name": "Schüler-Menü",
+      "sortOrder": 2
+    },
+    {
+      "id": "getraenke",
+      "name": "Getränke",
+      "sortOrder": 3
+    }
+  ],
+  "products": [
+    {
+      "id": "fuer-sie-das-beste--doener-duerum",
+      "name": "Döner-Dürüm",
+      "description": "Dönerfleisch im Blätterteig mit Salat und Sauce.",
+      "categoryId": "fuer-sie-das-beste",
+      "price": 9,
+      "discountPrice": null,
+      "image": "/assets/menu-ateshane.webp",
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 9
+        }
+      ],
+      "sortOrder": 1
+    },
+    {
+      "id": "fuer-sie-das-beste--pom-doener",
+      "name": "Pom-Döner ( in Döner-Box )",
+      "description": "Dönerfleisch mit Pommes und Salat.",
+      "categoryId": "fuer-sie-das-beste",
+      "price": 9,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 9
+        }
+      ],
+      "sortOrder": 2
+    },
+    {
+      "id": "fuer-sie-das-beste--doener-teller",
+      "name": "Döner-Teller",
+      "description": "Dönerfleisch mit Salat und Pommes oder Reis.",
+      "categoryId": "fuer-sie-das-beste",
+      "price": 14,
+      "discountPrice": null,
+      "image": "/assets/menu-iki-dunya.webp",
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 14
+        }
+      ],
+      "sortOrder": 3
+    },
+    {
+      "id": "fuer-sie-das-beste--doenerfleisch",
+      "name": "Dönerfleisch",
+      "description": "Dönerfleisch in Tellerbox.",
+      "categoryId": "fuer-sie-das-beste",
+      "price": 10,
+      "discountPrice": null,
+      "image": "/assets/ing-meat.webp",
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "kl.",
+          "price": 10
+        },
+        {
+          "size": "gr.",
+          "price": 18
+        }
+      ],
+      "sortOrder": 4
+    },
+    {
+      "id": "fuer-sie-das-beste--saucen-schale",
+      "name": "Mayo-, Ketchup-, Zaziki-, Curry Soße- Schale",
+      "description": "",
+      "categoryId": "fuer-sie-das-beste",
+      "price": 0.7,
+      "discountPrice": null,
+      "image": "/assets/ing-sauce.webp",
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "kl.",
+          "price": 0.7
+        },
+        {
+          "size": "gr.",
+          "price": 1.5
+        }
+      ],
+      "sortOrder": 5
+    },
+    {
+      "id": "fuer-sie-das-beste--pommes",
+      "name": "Pommes",
+      "description": "",
+      "categoryId": "fuer-sie-das-beste",
+      "price": 3.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "kl.",
+          "price": 3.5
+        },
+        {
+          "size": "gr.",
+          "price": 4.5
+        }
+      ],
+      "sortOrder": 6
+    },
+    {
+      "id": "fuer-sie-das-beste--pommes-spezial",
+      "name": "Pommes Spezial",
+      "description": "",
+      "categoryId": "fuer-sie-das-beste",
+      "price": 5.6,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 5.6
+        }
+      ],
+      "sortOrder": 7
+    },
+    {
+      "id": "fuer-sie-das-beste--sucuk-tasche",
+      "name": "Sucuk-Tasche",
+      "description": "Knoblauchwurst im Fladenbrot mit Salat.",
+      "categoryId": "fuer-sie-das-beste",
+      "price": 8,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 8
+        }
+      ],
+      "sortOrder": 8
+    },
+    {
+      "id": "fuer-sie-das-beste--falafel-tasche",
+      "name": "Falafel-Tasche",
+      "description": "Kichererbsenfrikadellen im Fladenbrot mit Salat.",
+      "categoryId": "fuer-sie-das-beste",
+      "price": 8,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 8
+        }
+      ],
+      "sortOrder": 9
+    },
+    {
+      "id": "fuer-sie-das-beste--falafel-teller",
+      "name": "Falafel-Teller",
+      "description": "Kichererbsenfrikadellen mit Pommes und Salat.",
+      "categoryId": "fuer-sie-das-beste",
+      "price": 13,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 13
+        }
+      ],
+      "sortOrder": 10
+    },
+    {
+      "id": "original-doener--lahmacun-salat",
+      "name": "Türkische Pizza / Lahmacun",
+      "description": "+ Salat.",
+      "categoryId": "original-doener",
+      "price": 6,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 6
+        }
+      ],
+      "sortOrder": 100
+    },
+    {
+      "id": "original-doener--lahmacun-doenerfleisch",
+      "name": "Türkische Pizza / Lahmacun",
+      "description": "+ Dönerfleisch und Salat.",
+      "categoryId": "original-doener",
+      "price": 9,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 9
+        }
+      ],
+      "sortOrder": 101
+    },
+    {
+      "id": "original-doener--boerek",
+      "name": "Börek",
+      "description": "türkische Teigspezialitäten.",
+      "categoryId": "original-doener",
+      "price": 1.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "Rolle",
+          "price": 1.5
+        },
+        {
+          "size": "Dreieck",
+          "price": 2
+        },
+        {
+          "size": "Schnecke",
+          "price": 3
+        }
+      ],
+      "sortOrder": 102
+    },
+    {
+      "id": "original-doener--gemischter-salat",
+      "name": "Gemischter Salat",
+      "description": "",
+      "categoryId": "original-doener",
+      "price": 5,
+      "discountPrice": null,
+      "image": "/assets/ing-lettuce.webp",
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 5
+        }
+      ],
+      "sortOrder": 103
+    },
+    {
+      "id": "original-doener--salat-tasche",
+      "name": "Salat-Tasche",
+      "description": "Gemischter Salat im Fladenbrot mit Sauce.",
+      "categoryId": "original-doener",
+      "price": 5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 5
+        }
+      ],
+      "sortOrder": 104
+    },
+    {
+      "id": "original-doener--iskender-doener",
+      "name": "Iskender-Döner",
+      "description": "+ kleine Fladenbrotwürfel, Tomatensauce und Joguhrt.",
+      "categoryId": "original-doener",
+      "price": 10,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 10
+        }
+      ],
+      "sortOrder": 105
+    },
+    {
+      "id": "original-doener--suppe",
+      "name": "Suppe",
+      "description": "Täglich wechselnden Suppen.",
+      "categoryId": "original-doener",
+      "price": 3.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 3.5
+        }
+      ],
+      "sortOrder": 106
+    },
+    {
+      "id": "schueler-menue--schueler-menue",
+      "name": "Schüler-Menü",
+      "description": "Döner Tasche (klein) + kleine Pommes und Durstlöscher.",
+      "categoryId": "schueler-menue",
+      "price": 10.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 10.5
+        }
+      ],
+      "sortOrder": 200
+    },
+    {
+      "id": "schueler-menue--menue-1",
+      "name": "Menü 1",
+      "description": "Türk. Pizza mit Dönerfleisch und Salat + kleine Pommes und Ayran.",
+      "categoryId": "schueler-menue",
+      "price": 13,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 13
+        }
+      ],
+      "sortOrder": 201
+    },
+    {
+      "id": "schueler-menue--menue-2",
+      "name": "Menü 2",
+      "description": "Döner Dürüm ( gerollt ) + kleine Pommes und Durstlöscher.",
+      "categoryId": "schueler-menue",
+      "price": 13,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 13
+        }
+      ],
+      "sortOrder": 202
+    },
+    {
+      "id": "schueler-menue--menue-3",
+      "name": "Menü 3",
+      "description": "Falafel Tasche mit Salat + kleine Pommes und Ayran.",
+      "categoryId": "schueler-menue",
+      "price": 14,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 14
+        }
+      ],
+      "sortOrder": 203
+    },
+    {
+      "id": "schueler-menue--menues-mit-cola",
+      "name": "Alle Menüs mit Cola",
+      "description": "",
+      "categoryId": "schueler-menue",
+      "price": 1,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 1
+        }
+      ],
+      "sortOrder": 204
+    },
+    {
+      "id": "getraenke--softdrinks",
+      "name": "Cola, Cola Light, Fanta, Sprite, Mexo Mix",
+      "description": "",
+      "categoryId": "getraenke",
+      "price": 2.25,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "0,5 l",
+          "price": 2.25
+        }
+      ],
+      "sortOrder": 300
+    },
+    {
+      "id": "getraenke--wasser",
+      "name": "Wasser",
+      "description": "",
+      "categoryId": "getraenke",
+      "price": 2,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "0,5 l",
+          "price": 2
+        }
+      ],
+      "sortOrder": 301
+    },
+    {
+      "id": "getraenke--ayran-durstloescher",
+      "name": "Ayran, Durstlöscher",
+      "description": "",
+      "categoryId": "getraenke",
+      "price": 1.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 1.5
+        }
+      ],
+      "sortOrder": 302
+    },
+    {
+      "id": "getraenke--uludag-gazoz",
+      "name": "Uludag Gazoz",
+      "description": "",
+      "categoryId": "getraenke",
+      "price": 2.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "0,5 l",
+          "price": 2.5
+        }
+      ],
+      "sortOrder": 303
+    },
+    {
+      "id": "getraenke--redbull",
+      "name": "Redbull",
+      "description": "",
+      "categoryId": "getraenke",
+      "price": 2.6,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "0,25 l",
+          "price": 2.6
+        }
+      ],
+      "sortOrder": 304
+    },
+    {
+      "id": "getraenke--heissgetraenke",
+      "name": "Alle Heißgetränke",
+      "description": "",
+      "categoryId": "getraenke",
+      "price": 2,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "variants": [
+        {
+          "size": "",
+          "price": 2
+        }
+      ],
+      "sortOrder": 305
+    }
+  ]
+}

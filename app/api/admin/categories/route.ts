@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin, badRequest } from "@/lib/admin/guard";
+import { requireAdmin, badRequest, storeWrite } from "@/lib/admin/guard";
 import { createCategory, getCatalog } from "@/lib/admin/store";
 import { slugify } from "@/lib/admin/types";
 
@@ -29,6 +29,7 @@ export async function POST(request: Request) {
   if (!name) return badRequest("Kategori adı boş olamaz.");
   if (name.length > 80) return badRequest("Kategori adı en fazla 80 karakter olabilir.");
 
-  const category = await createCategory(name, slugify(name) || "kategori");
+  const category = await storeWrite(() => createCategory(name, slugify(name) || "kategori"));
+  if (category instanceof NextResponse) return category;
   return NextResponse.json(category, { status: 201 });
 }

@@ -16,8 +16,11 @@ import {
  * kalıcı katmana (Postgres, SQLite, Supabase …) geçilecekse yalnızca bu dosya
  * değiştirilir — API route'ları ve UI aynı kalır.
  *
- * NOT: Serverless platformlarda (Vercel, Netlify) dosya sistemi geçicidir.
- * Kalıcı yazma için Node sunucusu (next start) veya gerçek bir veritabanı gerekir.
+ * NOT: Serverless platformlarda (Vercel, Netlify) dosya sistemi salt okunurdur.
+ * Bu yüzden `catalog.json` repoda tutulur ve okuma her zaman çalışır; yazma
+ * denemesi ise `StoreWriteError` ile başarısız olur ve admin arayüzüne anlamlı
+ * bir mesaj döner. Kalıcı yazma için Node sunucusu (next start) veya gerçek bir
+ * veritabanı gerekir.
  */
 
 const STORE_DIR = path.join(process.cwd(), "data", "store");
@@ -68,19 +71,41 @@ async function readCatalog(): Promise<Catalog> {
     }
     throw new Error("catalog.json beklenen şekilde değil");
   } catch {
-    // dosya yok veya bozuk: mevcut menü verisinden yeniden kur
+    // dosya yok veya bozuk: mevcut menü verisinden yeniden kur.
+    // Kalıcılaştırma en iyi çaba: salt okunur ortamda yazma başarısız olsa da
+    // katalog bellekte kullanılabilir olmalı, sayfa çökmemeli.
     const fresh = seed();
-    await writeCatalog(fresh);
+    try {
+      await writeCatalog(fresh);
+    } catch {
+      // yoksay: okuma yolu yazmaya bağlı değil
+    }
     return fresh;
   }
 }
 
+/** Yazma reddedildiğinde (ör. salt okunur serverless dosya sistemi) fırlatılır. */
+export class StoreWriteError extends Error {
+  constructor(cause: unknown) {
+    super(
+      "Katalog kaydedilemedi: bu ortamda dosya sistemi salt okunur. " +
+        "Değişiklikleri kalıcı kılmak için kalıcı bir veri katmanı gerekiyor."
+    );
+    this.name = "StoreWriteError";
+    this.cause = cause;
+  }
+}
+
 async function writeCatalog(catalog: Catalog): Promise<void> {
-  await fs.mkdir(STORE_DIR, { recursive: true });
-  const tmp = `${STORE_FILE}.${process.pid}.tmp`;
-  await fs.writeFile(tmp, JSON.stringify(catalog, null, 2), "utf8");
-  // atomik değiştirme: yazma yarıda kalırsa mevcut dosya bozulmaz
-  await fs.rename(tmp, STORE_FILE);
+  try {
+    await fs.mkdir(STORE_DIR, { recursive: true });
+    const tmp = `${STORE_FILE}.${process.pid}.tmp`;
+    await fs.writeFile(tmp, JSON.stringify(catalog, null, 2), "utf8");
+    // atomik değiştirme: yazma yarıda kalırsa mevcut dosya bozulmaz
+    await fs.rename(tmp, STORE_FILE);
+  } catch (error) {
+    throw new StoreWriteError(error);
+  }
 }
 
 /** Okuma-değiştirme-yazma işlemlerini sıraya alır. */

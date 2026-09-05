@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin, badRequest, notFound } from "@/lib/admin/guard";
+import { requireAdmin, badRequest, notFound, storeWrite } from "@/lib/admin/guard";
 import { deleteCategory, updateCategory } from "@/lib/admin/store";
 
 export const runtime = "nodejs";
@@ -22,7 +22,8 @@ export async function PATCH(request: Request, { params }: Params) {
   if (!name) return badRequest("Kategori adı boş olamaz.");
   if (name.length > 80) return badRequest("Kategori adı en fazla 80 karakter olabilir.");
 
-  const updated = await updateCategory(params.id, { name });
+  const updated = await storeWrite(() => updateCategory(params.id, { name }));
+  if (updated instanceof NextResponse) return updated;
   if (!updated) return notFound("Kategori bulunamadı.");
   return NextResponse.json(updated);
 }
@@ -31,7 +32,8 @@ export async function DELETE(_request: Request, { params }: Params) {
   const denied = await requireAdmin();
   if (denied) return denied;
 
-  const result = await deleteCategory(params.id);
+  const result = await storeWrite(() => deleteCategory(params.id));
+  if (result instanceof NextResponse) return result;
   if (result.ok) return NextResponse.json({ ok: true });
   if (result.reason === "not_found") return notFound("Kategori bulunamadı.");
   return badRequest(
