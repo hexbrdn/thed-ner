@@ -114,7 +114,7 @@ export default function CartDrawer() {
                     <li key={l.id} className="border border-line bg-void/35 p-4">
                       <div className="flex justify-between gap-3 mb-1">
                         <p className="font-display font-semibold text-bone text-sm">{l.label}</p>
-                        <p className="font-mono text-sm text-bone shrink-0 tabular-nums">{l.price * l.qty}₺</p>
+                        <p className="font-mono text-sm text-bone shrink-0 tabular-nums">{l.price * l.qty} €</p>
                       </div>
                       {l.detail && <p className="text-xs text-smoke mb-3">{l.detail}</p>}
                       <div className="flex items-center justify-between">
@@ -152,11 +152,11 @@ export default function CartDrawer() {
               <div className="border-t border-line px-6 py-5 shrink-0">
                 <div className="flex justify-between text-sm text-smoke mb-2">
                   <span>{t.cart.subtotal}</span>
-                  <span className="tabular-nums">{total}₺</span>
+                  <span className="tabular-nums">{total} €</span>
                 </div>
                 <div className="flex justify-between text-sm text-smoke mb-3">
                   <span>{t.cart.deliveryFee}</span>
-                  <span className="tabular-nums">{delivery === 0 ? t.cart.freeDelivery : `${delivery}₺`}</span>
+                  <span className="tabular-nums">{delivery === 0 ? t.cart.freeDelivery : `${delivery} €`}</span>
                 </div>
                 {delivery > 0 && (
                   <p className="text-xs text-smoke/70 mb-3">
@@ -165,7 +165,7 @@ export default function CartDrawer() {
                 )}
                 <div className="flex justify-between items-center border-t border-line pt-3 mb-4">
                   <span className="tag text-smoke">{t.cart.total}</span>
-                  <span className="font-display font-extrabold text-2xl text-amber tabular-nums">{grand}₺</span>
+                  <span className="font-display font-extrabold text-2xl text-amber tabular-nums">{grand} €</span>
                 </div>
                 <button
                   onClick={() => setStage("form")}
@@ -250,7 +250,7 @@ export default function CartDrawer() {
             <div className="border-t border-line px-6 py-5 shrink-0">
               <div className="flex justify-between items-center mb-4">
                 <span className="tag text-smoke">{t.cart.total}</span>
-                <span className="font-display font-extrabold text-2xl text-amber tabular-nums">{grand}₺</span>
+                <span className="font-display font-extrabold text-2xl text-amber tabular-nums">{grand} €</span>
               </div>
               <div className="flex gap-3">
                 <button

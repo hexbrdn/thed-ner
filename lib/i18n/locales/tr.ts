@@ -239,7 +239,7 @@ export const trTranslations = {
     subtotal: "Ara toplam",
     deliveryFee: "Paket servis",
     freeDelivery: "Ücretsiz",
-    freeDeliveryThreshold: "{amount}₺ daha eklersen paket servis ücretsiz.",
+    freeDeliveryThreshold: "{amount} € daha eklersen paket servis ücretsiz.",
     total: "Toplam",
     addressBtn: "ADRES BİLGİLERİ",
     nameLabel: "Ad Soyad",

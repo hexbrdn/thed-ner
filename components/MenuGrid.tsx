@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { MENU_COMBOS } from "@/data/menu";
+import { MENU_COMBOS, MENU_CATEGORIES } from "@/data/menu";
 import { useCart } from "@/lib/cart";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
@@ -89,13 +89,76 @@ export default function MenuGrid() {
                   <h3 className="font-display font-extrabold text-2xl text-bone mb-3">{name}</h3>
                   <p className="text-smoke text-sm leading-relaxed mb-8 flex-1">{desc}</p>
                   <div className="flex items-center justify-between pt-4 border-t border-line">
-                    <span className="font-display font-extrabold text-2xl text-bone">{c.price}₺</span>
+                    <span className="font-display font-extrabold text-2xl text-bone">{c.price.toFixed(2).replace(".", ",")} €</span>
                     <span className="tag text-smoke group-hover:text-amber transition-colors">{t.menuGrid.addToCart}</span>
                   </div>
                 </div>
               </button>
             );
           })}
+        </div>
+
+        <div className="mt-20 md:mt-28 space-y-14">
+          {MENU_CATEGORIES.map((cat) => (
+            <div key={cat.id}>
+              <div className="flex items-center gap-5 mb-8">
+                <h3 className="font-display font-extrabold text-2xl md:text-3xl text-bone whitespace-nowrap">
+                  {cat.title}
+                </h3>
+                <span className="h-px flex-1 bg-line" />
+              </div>
+
+              <ul className="grid md:grid-cols-2 gap-px bg-line border border-line">
+                {cat.items.map((item) => (
+                  <li
+                    key={`${cat.id}-${item.id}`}
+                    className="menu-card bg-void hover:bg-panel transition-colors duration-300 p-6 md:p-7 flex gap-5"
+                  >
+                    {item.image && (
+                      <div className="relative w-16 h-16 shrink-0 overflow-hidden border border-line bg-panel">
+                        <Image
+                          src={item.image}
+                          alt={item.name}
+                          fill
+                          sizes="64px"
+                          className="object-cover saturate-[0.95]"
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline justify-between gap-4">
+                        <h4 className="font-display font-bold text-lg text-bone leading-tight">
+                          {item.name}
+                        </h4>
+                        {item.variants.length === 1 && !item.variants[0].size && (
+                          <span className="font-display font-extrabold text-lg text-amber tabular-nums whitespace-nowrap">
+                            {item.variants[0].price}
+                          </span>
+                        )}
+                      </div>
+
+                      {item.desc && (
+                        <p className="text-smoke text-sm leading-relaxed mt-2">{item.desc}</p>
+                      )}
+
+                      {(item.variants.length > 1 || item.variants[0].size) && (
+                        <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3 pt-3 border-t border-line">
+                          {item.variants.map((v) => (
+                            <span key={v.size + v.price} className="flex items-baseline gap-2">
+                              <span className="tag text-smoke">{v.size}</span>
+                              <span className="font-display font-bold text-base text-amber tabular-nums">
+                                {v.price}
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
       </div>
     </section>

@@ -279,22 +279,22 @@ export default function OrderBuilder() {
 
             <ul className="space-y-2 text-sm mb-4">
               <li className="flex justify-between text-smoke">
-                <span>{t.builder.basePrice}</span> <span>{breakdown.base}₺</span>
+                <span>{t.builder.basePrice}</span> <span>{breakdown.base} €</span>
               </li>
               <li className="flex justify-between text-smoke">
-                <span>{isDe ? breakdown.b.labelDe : breakdown.b.label}</span> <span>{breakdown.b.price > 0 ? `+${breakdown.b.price}₺` : "—"}</span>
+                <span>{isDe ? breakdown.b.labelDe : breakdown.b.label}</span> <span>{breakdown.b.price > 0 ? `+${breakdown.b.price} €` : "—"}</span>
               </li>
               <li className="flex justify-between text-smoke">
-                <span>{isDe ? breakdown.p.labelDe : breakdown.p.label}</span> <span>{breakdown.p.price > 0 ? `+${breakdown.p.price}₺` : "—"}</span>
+                <span>{isDe ? breakdown.p.labelDe : breakdown.p.label}</span> <span>{breakdown.p.price > 0 ? `+${breakdown.p.price} €` : "—"}</span>
               </li>
               <li className="flex justify-between text-smoke">
-                <span>{isDe ? breakdown.s.labelDe : breakdown.s.label}</span> <span>{breakdown.s.price > 0 ? `+${breakdown.s.price}₺` : "—"}</span>
+                <span>{isDe ? breakdown.s.labelDe : breakdown.s.label}</span> <span>{breakdown.s.price > 0 ? `+${breakdown.s.price} €` : "—"}</span>
               </li>
             </ul>
 
             <div className="flex items-center justify-between border-t border-line pt-4 mb-2">
               <span className="tag text-smoke">{t.builder.total}</span>
-              <span className="font-display font-extrabold text-3xl text-amber tabular-nums">{breakdown.total}₺</span>
+              <span className="font-display font-extrabold text-3xl text-amber tabular-nums">{breakdown.total} €</span>
             </div>
 
             <div className="flex items-center justify-between mb-5">
@@ -332,7 +332,7 @@ export default function OrderBuilder() {
               <div className="border-t border-line pt-4">
                 <div className="flex items-center justify-between mb-3">
                   <span className="tag text-smoke">{t.builder.cartItemCount.replace("{count}", String(cartCount))}</span>
-                  <span className="font-display font-extrabold text-xl text-flame tabular-nums">{cartTotal}₺</span>
+                  <span className="font-display font-extrabold text-xl text-flame tabular-nums">{cartTotal} €</span>
                 </div>
                 <button
                   onClick={openCart}
