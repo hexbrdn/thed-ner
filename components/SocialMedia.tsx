@@ -1,6 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { BUSINESS_INFO } from "@/data/businessInfo";
 
 export default function SocialMedia() {
   const { t } = useLanguage();
@@ -20,9 +21,7 @@ export default function SocialMedia() {
           </div>
 
           <a
-            href="https://instagram.com"
-            target="_blank"
-            rel="noopener noreferrer"
+            href={BUSINESS_INFO.phoneTel}
             className="focus-ring shrink-0 bg-flame-gradient text-void font-display font-extrabold px-8 py-4 text-sm hover:brightness-110 transition-[filter,transform] active:translate-y-px"
           >
             {t.social.followBtn}

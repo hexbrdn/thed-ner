@@ -15,15 +15,15 @@ export default function News() {
           </h2>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {t.news.items.map((art) => (
             <article
               key={art.id}
               className="kinetic-card border border-line bg-char p-6 flex flex-col justify-between hover:border-amber transition-colors duration-300"
             >
               <div>
-                <span className="tag text-amber block mb-3">NEWS</span>
-                <h3 className="font-display font-bold text-lg text-bone mb-3 leading-snug">
+                <span className="tag text-amber block mb-3">{t.news.badge}</span>
+                <h3 className="font-display font-bold text-lg text-bone mb-3 leading-snug [overflow-wrap:anywhere]">
                   {art.title}
                 </h3>
                 <p className="text-smoke text-sm leading-relaxed mb-6">

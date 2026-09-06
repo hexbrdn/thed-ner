@@ -4,10 +4,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { BREADS, PROTEIN, VEGGIES, SAUCES, type Option } from "@/data/menu";
+import type { BuilderGroup, BuilderGroupId, BuilderOption } from "@/lib/admin/types";
+import type { PublicBuilder } from "@/lib/admin/store";
+import { formatCents, toCents } from "@/lib/money";
 import { playToggle, unlockAudio } from "@/lib/kitchenAudio";
 import { useCart } from "@/lib/cart";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+
+/**
+ * "Kendin Seç" bölümü.
+ *
+ * Fiyatların tamamı katalogtan gelir (`/api/menu/builder`): taban fiyat
+ * menüdeki gerçek ürünün güncel fiyatıdır, ek ücretler admin panelinden
+ * yönetilir. Burada sabit fiyat yoktur; gösterilen tutar sepette ve sipariş
+ * ucunda yeniden hesaplandığında aynı sonucu verir.
+ */
 
 function OptionCard({
   option,
@@ -15,36 +26,37 @@ function OptionCard({
   onClick,
   isDe,
 }: {
-  option: Option;
+  option: BuilderOption;
   selected: boolean;
   onClick: () => void;
   isDe: boolean;
 }) {
-  const label = isDe ? option.labelDe : option.label;
-  const desc = isDe ? option.descDe : option.desc;
+  const label = isDe ? option.labelDe || option.label : option.label;
+  const desc = isDe ? option.descDe || option.desc : option.desc;
 
   return (
     <button
       onClick={onClick}
+      aria-pressed={selected}
       className={`focus-ring kinetic-card group relative flex items-center gap-4 border p-3 text-left transition-all duration-300 ${
         selected ? "border-amber ember-surface shadow-ember-card" : "border-line bg-char/50 hover:border-smoke hover:bg-panel"
       }`}
     >
       {option.image ? (
         <div className="relative w-14 h-14 shrink-0">
-          <Image src={option.image} alt={label} fill className="object-contain" sizes="56px" />
+          <Image src={option.image} alt="" fill className="object-contain" sizes="56px" />
         </div>
       ) : (
         <div className="w-14 h-14 shrink-0 border border-line flex items-center justify-center tag text-smoke">
           +
         </div>
       )}
-      <div className="min-w-0">
-        <p className="font-display font-semibold text-bone truncate">{label}</p>
-        <p className="text-xs text-smoke truncate">{desc}</p>
+      <div className="min-w-0 flex-1">
+        <p className="font-display font-semibold text-bone leading-tight [overflow-wrap:anywhere]">{label}</p>
+        <p className="text-xs text-smoke leading-snug [overflow-wrap:anywhere]">{desc}</p>
       </div>
       <div className={`ml-auto tag shrink-0 ${selected ? "text-amber" : "text-flame"}`}>
-        {option.price > 0 ? `+${option.price}€` : (isDe ? "INKL." : "DAHİL")}
+        {option.price > 0 ? `+${formatCents(toCents(option.price))}` : isDe ? "INKL." : "DAHİL"}
       </div>
       <span
         className={`absolute -top-px -left-px w-3 h-3 border-t-2 border-l-2 transition-colors ${
@@ -56,6 +68,8 @@ function OptionCard({
   );
 }
 
+const EMPTY_GROUP: BuilderGroup = { id: "bread", mode: "single", options: [] };
+
 export default function OrderBuilder() {
   const { lang, t } = useLanguage();
   const isDe = lang === "de";
@@ -64,14 +78,32 @@ export default function OrderBuilder() {
   const previewFlash = useRef<HTMLDivElement>(null);
   const revealTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [bread, setBread] = useState(BREADS[0].id);
-  const [protein, setProtein] = useState(PROTEIN[0].id);
-  const [veg, setVeg] = useState<string[]>(VEGGIES.map((v) => v.id));
-  const [sauce, setSauce] = useState(SAUCES[0].id);
+  const [config, setConfig] = useState<PublicBuilder | null>(null);
+  const [bread, setBread] = useState("");
+  const [protein, setProtein] = useState("");
+  const [veg, setVeg] = useState<string[]>([]);
+  const [sauce, setSauce] = useState("");
   const [qty, setQty] = useState(1);
   const [showReveal, setShowReveal] = useState(false);
   const [soundOn, setSoundOn] = useState(false);
-  const { add, openCart, count: cartCount, total: cartTotal } = useCart();
+  const { add, openCart, count: cartCount, quote } = useCart();
+
+  // Seçenekler ve taban fiyat katalogtan gelir; ilk seçimler yüklendiğinde kurulur.
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/menu/builder", { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error("builder"))))
+      .then((data: PublicBuilder) => {
+        setConfig(data);
+        const group = (id: BuilderGroupId) => data.groups.find((g) => g.id === id);
+        setBread(group("bread")?.options[0]?.id ?? "");
+        setProtein(group("protein")?.options[0]?.id ?? "");
+        setSauce(group("sauce")?.options[0]?.id ?? "");
+        setVeg((group("veggies")?.options ?? []).map((o) => o.id));
+      })
+      .catch(() => setConfig(null));
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger);
@@ -86,6 +118,16 @@ export default function OrderBuilder() {
     return () => ctx.revert();
   }, []);
 
+  const groups = useMemo(() => {
+    const byId = new Map((config?.groups ?? []).map((g) => [g.id, g] as const));
+    return {
+      bread: byId.get("bread") ?? EMPTY_GROUP,
+      protein: byId.get("protein") ?? EMPTY_GROUP,
+      veggies: byId.get("veggies") ?? EMPTY_GROUP,
+      sauce: byId.get("sauce") ?? EMPTY_GROUP,
+    };
+  }, [config]);
+
   const toggleVeg = (id: string) => {
     setVeg((prev) => {
       const on = !prev.includes(id);
@@ -94,42 +136,61 @@ export default function OrderBuilder() {
     });
   };
 
+  /**
+   * Özet paneli.
+   *
+   * Sunucudaki `priceCart` ile **birebir aynı** kural: taban fiyat + seçili
+   * seçeneklerin ek ücretleri, hepsi cent üzerinden. Bu yüzden burada görünen
+   * tutar sepette de, siparişte de değişmez.
+   */
   const breakdown = useMemo(() => {
-    const b = BREADS.find((x) => x.id === bread)!;
-    const p = PROTEIN.find((x) => x.id === protein)!;
-    const s = SAUCES.find((x) => x.id === sauce)!;
-    const vgs = VEGGIES.filter((x) => veg.includes(x.id));
-    const base = 145;
-    const total = base + b.price + p.price + s.price;
-    const kcal = b.kcal + p.kcal + s.kcal + vgs.reduce((n, v) => n + v.kcal, 0);
-    return { b, p, s, vgs, base, total, kcal };
-  }, [bread, protein, sauce, veg]);
+    const find = (group: BuilderGroup, id: string) =>
+      group.options.find((o) => o.id === id) ?? group.options[0] ?? null;
 
-  const lineLabel = `${isDe ? breakdown.b.labelDe : breakdown.b.label} • ${isDe ? breakdown.p.labelDe : breakdown.p.label} • ${isDe ? breakdown.s.labelDe : breakdown.s.label}`;
+    const b = find(groups.bread, bread);
+    const p = find(groups.protein, protein);
+    const s = find(groups.sauce, sauce);
+    const vgs = groups.veggies.options.filter((o) => veg.includes(o.id));
+    const chosen = [b, p, s].filter((o): o is BuilderOption => o !== null);
+
+    const baseCents = config?.basePriceCents ?? 0;
+    const totalCents =
+      baseCents + [...chosen, ...vgs].reduce((sum, o) => sum + toCents(o.price), 0);
+    const kcal = [...chosen, ...vgs].reduce((sum, o) => sum + o.kcal, 0);
+
+    return { b, p, s, vgs, baseCents, totalCents, kcal };
+  }, [groups, bread, protein, sauce, veg, config]);
+
+  const label = (option: BuilderOption | null) =>
+    option ? (isDe ? option.labelDe || option.label : option.label) : "—";
 
   const chips = useMemo(() => {
-    const sauceImage = breakdown.s.image ?? (sauce === "acili" ? "/assets/ing-ketchup.webp" : "/assets/ing-sauce.webp");
-    const proteinImage = breakdown.p.image ?? "/assets/ing-meat.webp";
     return [
-      { id: "bread", label: isDe ? breakdown.b.labelDe : breakdown.b.label, image: breakdown.b.image, active: true },
-      { id: "protein", label: isDe ? breakdown.p.labelDe : breakdown.p.label, image: proteinImage, active: true },
-      ...VEGGIES.map((v) => ({ id: v.id, label: isDe ? v.labelDe : v.label, image: v.image, active: veg.includes(v.id) })),
-      { id: "sauce", label: isDe ? breakdown.s.labelDe : breakdown.s.label, image: sauceImage, active: true },
+      { id: "bread", label: label(breakdown.b), image: breakdown.b?.image ?? null, active: true },
+      { id: "protein", label: label(breakdown.p), image: breakdown.p?.image ?? null, active: true },
+      ...groups.veggies.options.map((v) => ({
+        id: v.id,
+        label: isDe ? v.labelDe || v.label : v.label,
+        image: v.image,
+        active: veg.includes(v.id),
+      })),
+      { id: "sauce", label: label(breakdown.s), image: breakdown.s?.image ?? null, active: true },
     ];
-  }, [breakdown, sauce, veg, isDe]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [breakdown, groups.veggies, veg, isDe]);
+
+  const ready = config !== null && breakdown.b !== null && breakdown.p !== null && breakdown.s !== null;
 
   const addToCart = () => {
-    const key = `${bread}-${protein}-${sauce}-${veg.slice().sort().join(",")}`;
-    add(
-      {
-        id: key,
-        label: isDe ? "HDD Sandwich nach Wunsch" : "Kendin Hazırla Döner",
-        detail: `${lineLabel}${breakdown.vgs.length ? " • " + breakdown.vgs.map((v) => isDe ? v.labelDe : v.label).join(", ") : (isDe ? " • ohne Gemüse" : " • sebzesiz")}`,
-        price: breakdown.total,
-        kcal: breakdown.kcal,
-      },
-      qty
-    );
+    if (!ready) return;
+    add({
+      kind: "builder",
+      bread: breakdown.b!.id,
+      protein: breakdown.p!.id,
+      sauce: breakdown.s!.id,
+      veggies: breakdown.vgs.map((v) => v.id),
+      qty,
+    });
     setQty(1);
 
     setShowReveal(true);
@@ -148,6 +209,9 @@ export default function OrderBuilder() {
     };
   }, []);
 
+  const surcharge = (option: BuilderOption | null) =>
+    option && option.price > 0 ? `+${formatCents(toCents(option.price))}` : "—";
+
   return (
     <section ref={section} id="builder" className="relative overflow-hidden bg-void py-28 md:py-36">
       <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(180deg,rgba(255,194,71,0.08),transparent_26%),radial-gradient(ellipse_at_78%_20%,rgba(255,61,18,0.14),transparent_34%)]" />
@@ -161,18 +225,16 @@ export default function OrderBuilder() {
               <span className="text-flame">{t.builder.title2}</span>
             </h2>
           </div>
-          <p className="tag text-smoke max-w-[280px]">
-            {t.builder.subText}
-          </p>
+          <p className="tag text-smoke max-w-[280px]">{t.builder.subText}</p>
         </div>
 
-        <div className="grid md:grid-cols-[1.3fr_0.9fr] gap-10 items-start">
+        <div className="grid lg:grid-cols-[1.3fr_0.9fr] gap-10 items-start">
           {/* options */}
           <div className="space-y-10">
             <div className="builder-in">
               <p className="tag text-smoke mb-3">{t.builder.bread}</p>
               <div className="grid sm:grid-cols-2 gap-3">
-                {BREADS.map((o) => (
+                {groups.bread.options.map((o) => (
                   <OptionCard key={o.id} option={o} selected={bread === o.id} onClick={() => setBread(o.id)} isDe={isDe} />
                 ))}
               </div>
@@ -181,7 +243,7 @@ export default function OrderBuilder() {
             <div className="builder-in">
               <p className="tag text-smoke mb-3">{t.builder.protein}</p>
               <div className="grid sm:grid-cols-2 gap-3">
-                {PROTEIN.map((o) => (
+                {groups.protein.options.map((o) => (
                   <OptionCard key={o.id} option={o} selected={protein === o.id} onClick={() => setProtein(o.id)} isDe={isDe} />
                 ))}
               </div>
@@ -189,8 +251,8 @@ export default function OrderBuilder() {
 
             <div className="builder-in">
               <p className="tag text-smoke mb-3">{t.builder.veggies}</p>
-              <div className="grid sm:grid-cols-3 gap-3">
-                {VEGGIES.map((o) => (
+              <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                {groups.veggies.options.map((o) => (
                   <OptionCard key={o.id} option={o} selected={veg.includes(o.id)} onClick={() => toggleVeg(o.id)} isDe={isDe} />
                 ))}
               </div>
@@ -198,8 +260,8 @@ export default function OrderBuilder() {
 
             <div className="builder-in">
               <p className="tag text-smoke mb-3">{t.builder.sauces}</p>
-              <div className="grid sm:grid-cols-3 gap-3">
-                {SAUCES.map((o) => (
+              <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                {groups.sauce.options.map((o) => (
                   <OptionCard key={o.id} option={o} selected={sauce === o.id} onClick={() => setSauce(o.id)} isDe={isDe} />
                 ))}
               </div>
@@ -207,8 +269,8 @@ export default function OrderBuilder() {
           </div>
 
           {/* summary panel */}
-          <div className="builder-in md:sticky md:top-28 border border-line ember-surface p-6 shadow-ember-card">
-            <div className="flex items-center justify-between mb-4">
+          <div className="builder-in lg:sticky lg:top-28 border border-line ember-surface p-6 shadow-ember-card">
+            <div className="flex items-center justify-between gap-3 mb-4">
               <p className="tag text-flame">{t.builder.orderTitle}</p>
               <button
                 onClick={() => {
@@ -220,7 +282,7 @@ export default function OrderBuilder() {
                   soundOn ? "border-amber text-amber bg-amber/10" : "border-line text-smoke hover:border-smoke"
                 }`}
               >
-                {soundOn ? "◼ Sound" : "▶ Sound"}
+                {soundOn ? t.builder.soundOn : t.builder.soundOff}
               </button>
             </div>
 
@@ -250,7 +312,7 @@ export default function OrderBuilder() {
                     }`}
                   >
                     {chip.image ? (
-                      <Image src={chip.image} alt={chip.label} fill className="object-contain p-2" sizes="140px" />
+                      <Image src={chip.image} alt="" fill className="object-contain p-2" sizes="140px" />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center tag text-smoke text-center px-1">
                         {chip.label}
@@ -267,7 +329,7 @@ export default function OrderBuilder() {
               >
                 <Image
                   src="/assets/final-reveal-plate.webp"
-                  alt="Döner"
+                  alt=""
                   fill
                   className="object-cover"
                   sizes="400px"
@@ -277,52 +339,65 @@ export default function OrderBuilder() {
               </div>
             </div>
 
+            {!config && (
+              <p className="tag text-smoke mb-4" role="status">
+                {t.builder.loading}
+              </p>
+            )}
+
             <ul className="space-y-2 text-sm mb-4">
-              <li className="flex justify-between text-smoke">
-                <span>{t.builder.basePrice}</span> <span>{breakdown.base} €</span>
+              <li className="flex justify-between gap-3 text-smoke">
+                <span>{t.builder.basePrice}</span>
+                <span className="tabular-nums shrink-0">{formatCents(breakdown.baseCents)}</span>
               </li>
-              <li className="flex justify-between text-smoke">
-                <span>{isDe ? breakdown.b.labelDe : breakdown.b.label}</span> <span>{breakdown.b.price > 0 ? `+${breakdown.b.price} €` : "—"}</span>
+              <li className="flex justify-between gap-3 text-smoke">
+                <span className="min-w-0 truncate">{label(breakdown.b)}</span>
+                <span className="tabular-nums shrink-0">{surcharge(breakdown.b)}</span>
               </li>
-              <li className="flex justify-between text-smoke">
-                <span>{isDe ? breakdown.p.labelDe : breakdown.p.label}</span> <span>{breakdown.p.price > 0 ? `+${breakdown.p.price} €` : "—"}</span>
+              <li className="flex justify-between gap-3 text-smoke">
+                <span className="min-w-0 truncate">{label(breakdown.p)}</span>
+                <span className="tabular-nums shrink-0">{surcharge(breakdown.p)}</span>
               </li>
-              <li className="flex justify-between text-smoke">
-                <span>{isDe ? breakdown.s.labelDe : breakdown.s.label}</span> <span>{breakdown.s.price > 0 ? `+${breakdown.s.price} €` : "—"}</span>
+              <li className="flex justify-between gap-3 text-smoke">
+                <span className="min-w-0 truncate">{label(breakdown.s)}</span>
+                <span className="tabular-nums shrink-0">{surcharge(breakdown.s)}</span>
               </li>
             </ul>
 
-            <div className="flex items-center justify-between border-t border-line pt-4 mb-2">
+            <div className="flex items-center justify-between gap-3 border-t border-line pt-4 mb-2">
               <span className="tag text-smoke">{t.builder.total}</span>
-              <span className="font-display font-extrabold text-3xl text-amber tabular-nums">{breakdown.total} €</span>
+              <span className="font-display font-extrabold text-3xl text-amber tabular-nums">
+                {formatCents(breakdown.totalCents)}
+              </span>
             </div>
 
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center justify-between gap-3 mb-5">
               <span className="tag text-smoke">{t.builder.estEnergy}</span>
               <span className="font-mono text-sm text-flame tabular-nums">{breakdown.kcal} kcal</span>
             </div>
 
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center border border-line">
+              <div className="flex items-center border border-line shrink-0">
                 <button
                   onClick={() => setQty((q) => Math.max(1, q - 1))}
                   className="focus-ring w-10 h-10 text-bone hover:text-flame transition-colors"
-                  aria-label="azalt"
+                  aria-label={t.cart.decreaseQty}
                 >
                   −
                 </button>
-                <span className="w-10 text-center font-mono text-bone">{qty}</span>
+                <span className="w-10 text-center font-mono text-bone tabular-nums">{qty}</span>
                 <button
-                  onClick={() => setQty((q) => q + 1)}
+                  onClick={() => setQty((q) => Math.min(99, q + 1))}
                   className="focus-ring w-10 h-10 text-bone hover:text-flame transition-colors"
-                  aria-label="artır"
+                  aria-label={t.cart.increaseQty}
                 >
                   +
                 </button>
               </div>
               <button
                 onClick={addToCart}
-                className="focus-ring flex-1 bg-flame-gradient text-void font-display font-extrabold py-3 hover:brightness-110 transition-[filter,transform] active:translate-y-px text-xs tracking-wider"
+                disabled={!ready}
+                className="focus-ring flex-1 bg-flame-gradient text-void font-display font-extrabold py-3 hover:brightness-110 transition-[filter,transform] active:translate-y-px text-xs tracking-wider disabled:opacity-40 disabled:pointer-events-none"
               >
                 {t.builder.addToCart}
               </button>
@@ -330,9 +405,13 @@ export default function OrderBuilder() {
 
             {cartCount > 0 && (
               <div className="border-t border-line pt-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="tag text-smoke">{t.builder.cartItemCount.replace("{count}", String(cartCount))}</span>
-                  <span className="font-display font-extrabold text-xl text-flame tabular-nums">{cartTotal} €</span>
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <span className="tag text-smoke">
+                    {t.builder.cartItemCount.replace("{count}", String(cartCount))}
+                  </span>
+                  <span className="font-display font-extrabold text-xl text-flame tabular-nums">
+                    {quote ? formatCents(quote.totalCents) : "—"}
+                  </span>
                 </div>
                 <button
                   onClick={openCart}

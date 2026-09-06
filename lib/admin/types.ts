@@ -1,3 +1,5 @@
+import { formatEuro } from "@/lib/money";
+
 /**
  * Katalog veri modeli.
  *
@@ -54,11 +56,63 @@ export type Category = {
   sortOrder: number;
 };
 
+/* ------------------------------------------------------- döner yapılandırıcı */
+
+/**
+ * "Kendin Seç" bölümündeki tek bir seçenek (ekmek türü, ekstra et, sos …).
+ *
+ * `price` bir **ek ücrettir** (Euro), taban fiyatın üstüne biner. 0 = dahil.
+ * Fiyat burada, yani katalogda durur; arayüzde sabit fiyat tutulmaz.
+ */
+export type BuilderOption = {
+  id: string;
+  label: string;
+  labelDe: string;
+  desc: string;
+  descDe: string;
+  /** Taban fiyata eklenen ücret (€). */
+  price: number;
+  kcal: number;
+  image: string | null;
+};
+
+export type BuilderGroupId = "bread" | "protein" | "veggies" | "sauce";
+
+export type BuilderGroup = {
+  id: BuilderGroupId;
+  /** "single" = tek seçim zorunlu, "multi" = istediğin kadar. */
+  mode: "single" | "multi";
+  options: BuilderOption[];
+};
+
+export type BuilderConfig = {
+  /**
+   * Taban fiyatın okunacağı katalog ürünü. Ürün silinir/bulunamazsa
+   * `fallbackBasePrice` kullanılır — yapılandırıcı fiyatsız kalmasın.
+   */
+  baseProductId: string | null;
+  fallbackBasePrice: number;
+  groups: BuilderGroup[];
+};
+
+/** Sipariş toplamına eklenen ücretler. Admin panelinden yönetilir. */
+export type Settings = {
+  /** Paket/servis ücreti (€). 0 = ücret alınmıyor. */
+  serviceFee: number;
+  /**
+   * Bu tutarın üstündeki siparişlerde servis ücreti alınmaz.
+   * 0 = eşik yok (ücret her zaman uygulanır).
+   */
+  freeServiceOver: number;
+};
+
 export type Catalog = {
-  /** Şema sürümü. Artarsa depo kaynak menüden yeniden kurulur. */
+  /** Şema sürümü. Artarsa depo göç ettirilir (bkz. store/migrate). */
   version: number;
   categories: Category[];
   products: Product[];
+  settings: Settings;
+  builder: BuilderConfig;
 };
 
 /**
@@ -66,14 +120,23 @@ export type Catalog = {
  *
  * 1 → eski demo menüsü (`data/menu.ts`).
  * 2 → gerçek karta (`data/speisekarte.ts`) + no/TR alanları + showOnHome.
+ * 3 → fiyat tek kaynağa taşındı: `settings` (servis ücreti) ve `builder`
+ *     (kendin seç seçenekleri + ek ücretleri) katalogun parçası oldu.
+ *     Göç sırasında ürün/kategori kayıtları korunur.
  */
-export const CATALOG_VERSION = 2;
+export const CATALOG_VERSION = 3;
 
 /** Müşteri tarafına gönderilen, kategorileriyle gruplanmış görünüm. */
 export type PublicCategory = Category & { products: Product[] };
 
+/** Katalogdaki Euro değerini "7,50 €" biçiminde gösterir. */
 export function formatPrice(value: number): string {
-  return `${value.toFixed(2).replace(".", ",")} €`;
+  return formatEuro(value);
+}
+
+/** Ürünün geçerli satış fiyatı: indirim varsa indirimli olan. */
+export function effectivePrice(product: Pick<Product, "price" | "discountPrice">): number {
+  return product.discountPrice ?? product.price;
 }
 
 /** "7,00 €" / "+ 1,00 €" → 7 / 1. Parse edilemezse null. */

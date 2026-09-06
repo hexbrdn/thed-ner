@@ -31,6 +31,15 @@ export const BUSINESS_INFO = {
     takeaway: true,
     delivery: false, // Google Maps: Kein Lieferdienst
   },
+  /**
+   * Sosyal medya adresleri. Boş bırakılan hesap sitede hiç gösterilmez —
+   * doğrulanmamış/placeholder bağlantı yayına çıkmasın diye.
+   */
+  social: {
+    instagram: "",
+    facebook: "",
+    youtube: "",
+  },
   accessibility: {
     wheelchairParking: true,
   },

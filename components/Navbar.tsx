@@ -35,12 +35,14 @@ export default function Navbar() {
       }`}
     >
       {/* Top Banner */}
-      <div className="bg-flame-gradient text-void text-[11px] font-mono uppercase tracking-widest text-center py-1 px-4 truncate font-bold">
+      {/* Adres/telefon şeridi: dar ekranda kırpılmak yerine küçülür,
+          böylece telefon numarası mobilde de görünür kalır. */}
+      <div className="bg-flame-gradient text-void text-[10px] sm:text-[11px] font-mono uppercase tracking-wider sm:tracking-widest text-center py-1 px-3 sm:px-4 font-bold [overflow-wrap:anywhere]">
         {t.nav.franchiseInfo}
       </div>
 
-      <nav className="max-w-[1400px] mx-auto flex items-center justify-between px-6 md:px-10 py-4">
-        <Link href="/" className="focus-ring font-display font-extrabold text-lg md:text-xl tracking-tight text-bone shrink-0">
+      <nav className="max-w-[1400px] mx-auto flex items-center justify-between gap-2 px-4 sm:px-6 md:px-10 py-4">
+        <Link href="/" className="focus-ring font-display font-extrabold text-base sm:text-lg md:text-xl tracking-tight text-bone shrink-0">
           SAMİ´S <span className="text-amber">//</span> DÖNER
         </Link>
 
@@ -60,7 +62,7 @@ export default function Navbar() {
           ))}
         </ul>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
           {/* Language Switcher */}
           <div className="flex items-center border border-line bg-char p-0.5 rounded-none">
             <button
@@ -68,7 +70,7 @@ export default function Navbar() {
               className={`px-2 py-1 text-xs font-mono tracking-wider transition-colors ${
                 lang === "tr" ? "bg-amber text-void font-bold" : "text-smoke hover:text-bone"
               }`}
-              aria-label="Türkçe Dil Seçeneği"
+              aria-label="Türkçe"
             >
               TR
             </button>
@@ -77,7 +79,7 @@ export default function Navbar() {
               className={`px-2 py-1 text-xs font-mono tracking-wider transition-colors ${
                 lang === "de" ? "bg-amber text-void font-bold" : "text-smoke hover:text-bone"
               }`}
-              aria-label="Almanca Dil Seçeneği (Deutsch)"
+              aria-label="Deutsch"
             >
               DE
             </button>
@@ -86,8 +88,8 @@ export default function Navbar() {
           {/* Cart Button */}
           <button
             onClick={openCart}
-            aria-label={`${t.nav.cart}, ${count} ${t.builder.cartItemCount}`}
-            className="focus-ring relative tag border border-amber text-amber px-3 md:px-4 py-2 hover:bg-amber hover:text-void transition-colors"
+            aria-label={`${t.nav.cart} — ${t.builder.cartItemCount.replace("{count}", String(count))}`}
+            className="focus-ring relative tag border border-amber text-amber px-2.5 sm:px-3 md:px-4 py-2 hover:bg-amber hover:text-void transition-colors"
           >
             {t.nav.cart}
             {count > 0 && (
@@ -101,7 +103,8 @@ export default function Navbar() {
           <button
             onClick={() => setMobileOpen((v) => !v)}
             className="lg:hidden focus-ring tag border border-line text-smoke p-2 hover:border-amber transition-colors"
-            aria-label="Menüyü aç/kapat"
+            aria-label={t.nav.menu}
+            aria-expanded={mobileOpen}
           >
             {mobileOpen ? "✕" : "☰"}
           </button>

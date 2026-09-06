@@ -336,18 +336,18 @@ export default function AssemblyLog() {
                     ref={(el) => {
                       labelRefs.current[i] = el;
                     }}
-                    className={`absolute top-1/2 -translate-y-1/2 z-20 max-md:top-auto max-md:bottom-full max-md:left-1/2 max-md:right-auto max-md:mb-1 max-md:-translate-x-1/2 max-md:translate-y-0 ${
-                      step.from === "left" ? "left-full ml-4" : "right-full mr-4"
+                    className={`absolute z-20 inset-x-0 bottom-full mb-1 flex justify-center md:inset-x-auto md:bottom-auto md:mb-0 md:top-1/2 md:-translate-y-1/2 md:block ${
+                      step.from === "left" ? "md:left-full md:ml-4" : "md:right-full md:mr-4"
                     }`}
                   >
                     <button
                       onClick={() => setOpenTip((v) => (v === step.code ? null : step.code))}
                       aria-expanded={openTip === step.code}
-                      className={`focus-ring tag whitespace-nowrap flex items-center gap-2 group max-md:bg-void/75 max-md:px-2 max-md:py-1 max-md:backdrop-blur-sm ${
-                        step.from === "left" ? "" : "flex-row-reverse"
+                      className={`focus-ring tag whitespace-nowrap flex items-center gap-2 group bg-void/75 px-2 py-1 backdrop-blur-sm md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none ${
+                        step.from === "left" ? "" : "md:flex-row-reverse"
                       }`}
                     >
-                      <span className="w-6 h-px bg-amber transition-all duration-300 group-hover:w-10 max-md:hidden" />
+                      <span className="hidden md:block w-6 h-px bg-amber transition-all duration-300 group-hover:w-10" />
                       <span className="text-amber">{step.code}</span>
                       <span className="text-smoke group-hover:text-bone transition-colors">{step.name}</span>
                       <span className="text-smoke/50 group-hover:text-amber transition-colors">
@@ -357,11 +357,13 @@ export default function AssemblyLog() {
 
                     {openTip === step.code && (
                       <div
-                        className={`absolute top-full mt-2 w-[240px] max-md:w-[210px] border border-amber/50 bg-void/95 backdrop-blur-sm p-3 text-xs leading-relaxed text-smoke shadow-[0_20px_50px_rgba(0,0,0,0.6)] max-md:left-1/2 max-md:right-auto max-md:-translate-x-1/2 ${
-                          step.from === "left" ? "left-0" : "right-0"
+                        className={`absolute top-full mt-2 w-[210px] md:w-[240px] left-1/2 -translate-x-1/2 md:translate-x-0 border border-amber/50 bg-void/95 backdrop-blur-sm p-3 text-xs leading-relaxed text-smoke shadow-[0_20px_50px_rgba(0,0,0,0.6)] ${
+                          step.from === "left" ? "md:left-0" : "md:left-auto md:right-0"
                         }`}
                       >
-                        <p className="tag text-amber mb-1.5">{step.code} — Details</p>
+                        <p className="tag text-amber mb-1.5">
+                          {step.code} — {t.assembly.detailsLabel}
+                        </p>
                         {step.origin}
                       </div>
                     )}
@@ -376,7 +378,7 @@ export default function AssemblyLog() {
               <div className="absolute -inset-16 bg-flame/25 blur-[90px] rounded-full" />
               <Image
                 src="/assets/final-reveal-cross.webp"
-                alt="Hazırlanmış döner"
+                alt={t.assembly.revealTag}
                 fill
                 sizes="640px"
                 className="object-contain drop-shadow-[0_30px_70px_rgba(0,0,0,0.6)]"

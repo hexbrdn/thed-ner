@@ -205,7 +205,7 @@ export default function Hero() {
           <div className="absolute -inset-x-28 -inset-y-8 bg-flame/20 blur-[90px] rounded-full" />
           <Image
             src="/assets/hero-spit-cut.webp"
-            alt="Haus des Döners"
+            alt=""
             fill
             priority
             sizes="(max-width: 768px) 55vw, 26vw"

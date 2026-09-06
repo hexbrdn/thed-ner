@@ -35,20 +35,26 @@ export default function AboutUs() {
             </div>
             <div className="space-y-6 relative z-10">
               <div className="border-b border-line pb-4">
-                <span className="tag text-amber block mb-1">Seit 2019</span>
-                <span className="font-display text-2xl font-bold text-bone">Nationales Phänomen</span>
+                <span className="tag text-amber block mb-1">{t.about.sinceLabel}</span>
+                <span className="font-display text-xl md:text-2xl font-bold text-bone block text-balance">
+                  {t.about.sinceValue}
+                </span>
               </div>
               <div className="border-b border-line pb-4">
-                <span className="tag text-flame block mb-1">Authentischer Geschmack</span>
-                <span className="font-display text-2xl font-bold text-bone">HDD Sandwich Concept</span>
+                <span className="tag text-flame block mb-1">{t.about.tasteLabel}</span>
+                <span className="font-display text-xl md:text-2xl font-bold text-bone block text-balance">
+                  {t.about.tasteValue}
+                </span>
               </div>
               <div>
-                <span className="tag text-herb block mb-1">Qualitätsgarantie</span>
-                <span className="font-display text-2xl font-bold text-bone">Beste Zutaten & Leidenschaft</span>
+                <span className="tag text-herb block mb-1">{t.about.qualityLabel}</span>
+                <span className="font-display text-xl md:text-2xl font-bold text-bone block text-balance">
+                  {t.about.qualityValue}
+                </span>
               </div>
             </div>
             <div className="pt-6 border-t border-line mt-6 tag text-smoke">
-              SAMİ´S DÖNER // STRAßKIRCHEN
+              {t.about.locationLine}
             </div>
           </div>
         </div>

@@ -99,7 +99,7 @@ export default function FinalStack() {
           <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#7BD66F,#FFC247,#E5548A)] z-20 pointer-events-none" />
           <Image
             src="/assets/ingredients-board.webp"
-            alt="Zutaten Board"
+            alt={t.stack.rawTag}
             fill
             sizes="(max-width: 768px) 100vw, 1400px"
             className="object-cover"
@@ -112,7 +112,7 @@ export default function FinalStack() {
           >
             <Image
               src="/assets/cross-section.webp"
-              alt="Finished Döner"
+              alt={t.stack.builtTag}
               fill
               sizes="(max-width: 768px) 100vw, 1400px"
               className="object-cover"
@@ -129,10 +129,15 @@ export default function FinalStack() {
         </div>
 
         <div className="stat-row grid grid-cols-2 md:grid-cols-4 gap-px bg-line mt-px border border-line">
+          {/* Değerler değişken uzunlukta (sayı, "4.9 / 5", uzun şehir adı):
+              yazı boyutu kutu genişliğine göre ölçeklenir ve uzun tek kelimeler
+              kırılabilir; böylece komşu kutunun üstüne taşmaz. */}
           {t.stack.stats.map((s) => (
-            <div key={s.k} className="stat-item bg-char p-6">
-              <p className="tag text-smoke mb-2">{s.k}</p>
-              <p className="font-display font-extrabold text-2xl md:text-3xl text-bone tabular-nums">{s.v}</p>
+            <div key={s.k} className="stat-item bg-char p-5 md:p-6 min-w-0">
+              <p className="tag text-smoke mb-2 [overflow-wrap:anywhere]">{s.k}</p>
+              <p className="font-display font-extrabold text-[clamp(0.95rem,2.1vw,1.5rem)] leading-tight text-bone tabular-nums [overflow-wrap:anywhere] hyphens-auto">
+                {s.v}
+              </p>
             </div>
           ))}
         </div>

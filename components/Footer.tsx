@@ -2,6 +2,14 @@
 
 import Link from "next/link";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { BUSINESS_INFO } from "@/data/businessInfo";
+
+/** Yalnızca gerçekten tanımlanmış hesaplar listelenir (bkz. businessInfo). */
+const SOCIAL = [
+  { label: "Instagram", href: BUSINESS_INFO.social.instagram },
+  { label: "Facebook", href: BUSINESS_INFO.social.facebook },
+  { label: "YouTube", href: BUSINESS_INFO.social.youtube },
+].filter((item) => item.href.length > 0);
 
 export default function Footer() {
   const { t } = useLanguage();
@@ -45,11 +53,35 @@ export default function Footer() {
           </div>
 
           <div>
-            <p className="tag text-smoke mb-4">Social Media</p>
+            <p className="tag text-smoke mb-4">{t.footer.contactTitle}</p>
             <ul className="space-y-2 text-sm text-bone">
-              <li><a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-amber transition-colors">Instagram</a></li>
-              <li><a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="hover:text-amber transition-colors">Facebook</a></li>
-              <li><a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="hover:text-amber transition-colors">YouTube</a></li>
+              <li>
+                <a href={BUSINESS_INFO.phoneTel} className="focus-ring hover:text-amber transition-colors">
+                  {BUSINESS_INFO.formattedPhone}
+                </a>
+              </li>
+              <li>
+                <a
+                  href={BUSINESS_INFO.mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="focus-ring hover:text-amber transition-colors"
+                >
+                  {BUSINESS_INFO.address.fullAddress}
+                </a>
+              </li>
+              {SOCIAL.map((item) => (
+                <li key={item.label}>
+                  <a
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="focus-ring hover:text-amber transition-colors"
+                  >
+                    {item.label}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
@@ -57,9 +89,9 @@ export default function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-8 border-t border-line tag text-smoke">
           <span>{t.footer.rightsReserved}</span>
           <div className="flex gap-6">
-            <Link href="/" className="focus-ring hover:text-amber transition-colors">
+            <a href="#top" className="focus-ring hover:text-amber transition-colors">
               {t.footer.backToTop}
-            </Link>
+            </a>
           </div>
         </div>
       </div>

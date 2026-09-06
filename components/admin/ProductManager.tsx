@@ -215,7 +215,7 @@ export default function ProductManager({
   const noCategories = categories.length === 0;
 
   return (
-    <div className="max-w-[1200px]">
+    <div className="max-w-[1200px] min-w-0">
       <header className="flex flex-wrap items-end justify-between gap-5 mb-8">
         <div>
           <p className="tag text-flame mb-2">Katalog</p>
@@ -249,7 +249,7 @@ export default function ProductManager({
       )}
 
       {/* filtreler */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 mb-6">
         <TextInput
           type="search"
           value={search}
@@ -287,69 +287,67 @@ export default function ProductManager({
         </span>
       </div>
 
-      {/* liste */}
+      {/* liste
+          Satır sabit bir yatay şerit değil: üstte kimlik+fiyat bloğu, altında
+          rozetler ve işlemler. Her grup kendi içinde sarmalandığı için hiçbir
+          genişlikte yatay taşma olmaz ve tüm işlemler erişilebilir kalır
+          (önceki sürümde `shrink-0` + `flex-wrap` birlikte kullanıldığından
+          satır ne daralabiliyor ne de sarmalanabiliyordu). */}
       <ul className="border border-line divide-y divide-line">
         {visible.map((product) => (
-          <li
-            key={product.id}
-            className="bg-char p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-4"
-          >
-            <div className="relative w-14 h-14 shrink-0 border border-line bg-panel overflow-hidden">
-              {product.image ? (
-                <Image
-                  src={product.image}
-                  alt=""
-                  fill
-                  sizes="56px"
-                  className="object-cover"
-                />
-              ) : (
-                <span className="absolute inset-0 grid place-items-center tag text-smoke/50">
-                  —
-                </span>
-              )}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <p className="font-display font-bold text-bone truncate">
-                {product.no && (
-                  <span className="font-mono text-sm text-flame mr-2 tabular-nums">
-                    {product.no}
+          <li key={product.id} className="bg-char p-4 md:p-5">
+            <div className="flex flex-wrap items-start gap-4">
+              <div className="relative w-14 h-14 shrink-0 border border-line bg-panel overflow-hidden">
+                {product.image ? (
+                  <Image src={product.image} alt="" fill sizes="56px" className="object-cover" />
+                ) : (
+                  <span className="absolute inset-0 grid place-items-center tag text-smoke/50">
+                    —
                   </span>
                 )}
-                {product.name}
-              </p>
-              <p className="tag text-smoke mt-1">
-                {categoryName.get(product.categoryId) ?? product.categoryId}
-                <span className="text-smoke/50"> · sıra {product.sortOrder}</span>
-                {product.nameTr && <span className="text-smoke/50"> · TR: {product.nameTr}</span>}
-              </p>
-              {product.description && (
-                <p className="text-xs text-smoke/70 mt-1.5 line-clamp-2">{product.description}</p>
-              )}
-            </div>
+              </div>
 
-            <div className="shrink-0 md:w-[140px] md:text-right">
-              {product.discountPrice !== null ? (
-                <>
-                  <p className="font-display font-bold text-amber tabular-nums">
-                    {formatPrice(product.discountPrice)}
-                  </p>
-                  <p className="text-xs text-smoke line-through tabular-nums">
+              <div className="flex-1 min-w-[180px]">
+                <p className="font-display font-bold text-bone [overflow-wrap:anywhere]">
+                  {product.no && (
+                    <span className="font-mono text-sm text-flame mr-2 tabular-nums">
+                      {product.no}
+                    </span>
+                  )}
+                  {product.name}
+                </p>
+                <p className="tag text-smoke mt-1 [overflow-wrap:anywhere]">
+                  {categoryName.get(product.categoryId) ?? product.categoryId}
+                  <span className="text-smoke/50"> · sıra {product.sortOrder}</span>
+                  {product.nameTr && <span className="text-smoke/50"> · TR: {product.nameTr}</span>}
+                </p>
+                {product.description && (
+                  <p className="text-xs text-smoke/70 mt-1.5 line-clamp-2">{product.description}</p>
+                )}
+              </div>
+
+              <div className="ml-auto text-right shrink-0">
+                {product.discountPrice !== null ? (
+                  <>
+                    <p className="font-display font-bold text-amber tabular-nums">
+                      {formatPrice(product.discountPrice)}
+                    </p>
+                    <p className="text-xs text-smoke line-through tabular-nums">
+                      {formatPrice(product.price)}
+                    </p>
+                  </>
+                ) : (
+                  <p className="font-display font-bold text-bone tabular-nums">
                     {formatPrice(product.price)}
                   </p>
-                </>
-              ) : (
-                <p className="font-display font-bold text-bone tabular-nums">
-                  {formatPrice(product.price)}
-                </p>
-              )}
-              {product.variants.length > 1 && (
-                <p className="tag text-smoke/70 mt-1">{product.variants.length} varyasyon</p>
-              )}
+                )}
+                {product.variants.length > 1 && (
+                  <p className="tag text-smoke/70 mt-1">{product.variants.length} varyasyon</p>
+                )}
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2 mt-3">
               <Badge tone={product.active ? "on" : "off"}>
                 {product.active ? "AKTİF" : "PASİF"}
               </Badge>
@@ -359,12 +357,10 @@ export default function ProductManager({
               <Badge tone={product.showOnHome ? "on" : "off"}>
                 {product.showOnHome ? "MENÜDE" : "MENÜDE DEĞİL"}
               </Badge>
-              {!visibleOnSite(product) && (
-                <Badge tone="warn">SİTEDE GÖRÜNMÜYOR</Badge>
-              )}
+              {!visibleOnSite(product) && <Badge tone="warn">SİTEDE GÖRÜNMÜYOR</Badge>}
             </div>
 
-            <div className="flex flex-wrap gap-2 shrink-0">
+            <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-line/60">
               <button
                 onClick={() => toggleActive(product)}
                 disabled={busy}
@@ -398,7 +394,7 @@ export default function ProductManager({
               </button>
               <button
                 onClick={() => setPendingDelete(product)}
-                className="focus-ring tag border border-flame/50 px-3 py-2 text-flame hover:bg-flame hover:text-void transition-colors"
+                className="focus-ring tag border border-flame/50 px-3 py-2 text-flame hover:bg-flame hover:text-void transition-colors sm:ml-auto"
               >
                 SİL
               </button>

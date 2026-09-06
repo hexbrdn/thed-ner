@@ -1,15 +1,22 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { SPEISEKARTE, type MenuSection } from "@/data/speisekarte";
+import { BUILDER_BASE_PRODUCT_ID, BUILDER_GROUPS_SEED } from "@/data/menu";
+import { toCents } from "@/lib/money";
 import {
   CATALOG_VERSION,
+  effectivePrice,
   formatPrice,
   parsePrice,
   slugify,
+  type BuilderConfig,
+  type BuilderGroup,
+  type BuilderOption,
   type Catalog,
   type Category,
   type Product,
   type PublicCategory,
+  type Settings,
 } from "./types";
 
 /**
@@ -73,7 +80,31 @@ function seed(): Catalog {
     })
   );
 
-  return { version: CATALOG_VERSION, categories, products };
+  return {
+    version: CATALOG_VERSION,
+    categories,
+    products,
+    settings: defaultSettings(),
+    builder: defaultBuilder(),
+  };
+}
+
+/**
+ * Servis ücreti varsayılanı.
+ *
+ * İşletme kendi tanıtım metinlerinde "adrese teslimat yok, gel-al" diyor;
+ * bu yüzden varsayılan ücret 0. Paket servis başlatılırsa panelden açılır.
+ */
+function defaultSettings(): Settings {
+  return { serviceFee: 0, freeServiceOver: 0 };
+}
+
+function defaultBuilder(): BuilderConfig {
+  return {
+    baseProductId: BUILDER_BASE_PRODUCT_ID,
+    fallbackBasePrice: 0,
+    groups: BUILDER_GROUPS_SEED,
+  };
 }
 
 /**
@@ -111,7 +142,76 @@ function normalize(catalog: Catalog): Catalog {
     sortOrder: p.sortOrder ?? 0,
   }));
 
-  return { version: CATALOG_VERSION, categories, products };
+  return {
+    version: CATALOG_VERSION,
+    categories,
+    products,
+    settings: normalizeSettings(catalog.settings),
+    builder: normalizeBuilder(catalog.builder),
+  };
+}
+
+function num(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
+function normalizeSettings(raw: Partial<Settings> | undefined): Settings {
+  const base = defaultSettings();
+  if (!raw || typeof raw !== "object") return base;
+  return {
+    serviceFee: num(raw.serviceFee, base.serviceFee),
+    freeServiceOver: num(raw.freeServiceOver, base.freeServiceOver),
+  };
+}
+
+/**
+ * Yapılandırıcı ayarını tamamlar.
+ *
+ * Grup **kimlikleri ve sırası** kod tarafından belirlenir (arayüz onlara göre
+ * kurulu); panelden değiştirilen şey seçeneklerin ek ücreti/metnidir. Depoda
+ * eksik grup varsa tohumdaki hâli kullanılır, böylece bölüm hiç boş kalmaz.
+ */
+function normalizeBuilder(raw: Partial<BuilderConfig> | undefined): BuilderConfig {
+  const base = defaultBuilder();
+  if (!raw || typeof raw !== "object") return base;
+
+  const stored = new Map(
+    (Array.isArray(raw.groups) ? raw.groups : []).map((g) => [g?.id, g] as const)
+  );
+
+  const groups: BuilderGroup[] = base.groups.map((seedGroup) => {
+    const found = stored.get(seedGroup.id);
+    if (!found || !Array.isArray(found.options) || found.options.length === 0) return seedGroup;
+
+    const options: BuilderOption[] = found.options
+      .filter((o): o is BuilderOption => Boolean(o) && typeof o.id === "string")
+      .map((o) => {
+        const seedOption = seedGroup.options.find((x) => x.id === o.id);
+        return {
+          id: o.id,
+          label: o.label ?? seedOption?.label ?? o.id,
+          labelDe: o.labelDe ?? seedOption?.labelDe ?? o.label ?? o.id,
+          desc: o.desc ?? seedOption?.desc ?? "",
+          descDe: o.descDe ?? seedOption?.descDe ?? "",
+          price: num(o.price, 0),
+          kcal: num(o.kcal, seedOption?.kcal ?? 0),
+          image: o.image ?? seedOption?.image ?? null,
+        };
+      });
+
+    return { id: seedGroup.id, mode: seedGroup.mode, options };
+  });
+
+  return {
+    baseProductId:
+      typeof raw.baseProductId === "string" && raw.baseProductId
+        ? raw.baseProductId
+        : raw.baseProductId === null
+          ? null
+          : base.baseProductId,
+    fallbackBasePrice: num(raw.fallbackBasePrice, base.fallbackBasePrice),
+    groups,
+  };
 }
 
 async function readCatalog(): Promise<Catalog> {
@@ -121,15 +221,13 @@ async function readCatalog(): Promise<Catalog> {
     if (!Array.isArray(parsed.categories) || !Array.isArray(parsed.products)) {
       throw new Error("catalog.json beklenen şekilde değil");
     }
-    // Eski şema (ör. demo menüsünden kurulmuş v1 deposu): kaynaktan yeniden kur.
-    if ((parsed.version ?? 1) !== CATALOG_VERSION) {
-      throw new Error("catalog.json eski sürüm");
-    }
-    return normalize({
-      version: CATALOG_VERSION,
-      categories: parsed.categories,
-      products: parsed.products,
-    });
+    // v1 gerçek karta öncesi demo menüsü: içeriği artık geçerli değil, yeniden kur.
+    if ((parsed.version ?? 1) < 2) throw new Error("catalog.json eski sürüm");
+
+    // v2 → v3 göçü: ürün ve kategoriler olduğu gibi korunur, yalnızca yeni
+    // alanlar (settings/builder) varsayılanlarıyla tamamlanır. Admin panelinde
+    // yapılmış fiyat/durum değişiklikleri sürüm yükseltmesinde kaybolmaz.
+    return normalize(parsed as Catalog);
   } catch {
     // dosya yok veya bozuk: mevcut menü verisinden yeniden kur.
     // Kalıcılaştırma en iyi çaba: salt okunur ortamda yazma başarısız olsa da
@@ -359,4 +457,303 @@ export async function deleteCategory(id: string): Promise<DeleteCategoryResult> 
     await writeCatalog(catalog);
     return { ok: true } as const;
   });
+}
+
+/* ---------------------------------------------------------------- ayarlar */
+
+export async function getSettings(): Promise<Settings> {
+  return (await readCatalog()).settings;
+}
+
+export async function updateSettings(patch: Partial<Settings>): Promise<Settings> {
+  return transaction(async (catalog) => {
+    catalog.settings = { ...catalog.settings, ...patch };
+    await writeCatalog(catalog);
+    return catalog.settings;
+  });
+}
+
+/* --------------------------------------------------------- yapılandırıcı */
+
+export async function getBuilderConfig(): Promise<BuilderConfig> {
+  return (await readCatalog()).builder;
+}
+
+/**
+ * Yapılandırıcının taban fiyatı.
+ *
+ * Katalogdaki gerçek ürünün (varsayılan: menüdeki döner) güncel satış fiyatı
+ * kullanılır — indirim varsa indirimli olan. Ürün silinmiş/bulunamıyorsa
+ * `fallbackBasePrice` devreye girer.
+ */
+function resolveBasePrice(catalog: Catalog): number {
+  const { baseProductId, fallbackBasePrice } = catalog.builder;
+  if (!baseProductId) return fallbackBasePrice;
+  const product = catalog.products.find((p) => p.id === baseProductId);
+  return product ? effectivePrice(product) : fallbackBasePrice;
+}
+
+/** Müşteri tarafına gönderilen yapılandırıcı görünümü (taban fiyat çözülmüş). */
+export type PublicBuilder = {
+  basePriceCents: number;
+  baseProductName: string | null;
+  groups: BuilderGroup[];
+};
+
+export async function getPublicBuilder(): Promise<PublicBuilder> {
+  const catalog = await readCatalog();
+  const product = catalog.builder.baseProductId
+    ? catalog.products.find((p) => p.id === catalog.builder.baseProductId)
+    : undefined;
+  return {
+    basePriceCents: toCents(resolveBasePrice(catalog)),
+    baseProductName: product?.name ?? null,
+    groups: catalog.builder.groups,
+  };
+}
+
+export async function updateBuilder(patch: Partial<BuilderConfig>): Promise<BuilderConfig> {
+  return transaction(async (catalog) => {
+    catalog.builder = { ...catalog.builder, ...patch };
+    await writeCatalog(catalog);
+    return catalog.builder;
+  });
+}
+
+/* -------------------------------------------------------------- fiyatlama */
+
+/**
+ * Sepet satırının **istemciden gelen tarifi**.
+ *
+ * Dikkat: burada fiyat yoktur ve olmamalıdır. İstemci yalnızca "hangi ürün,
+ * hangi boy, hangi seçenekler, kaç adet" der; para hesabını her zaman sunucu
+ * yapar. Böylece istek gövdesi kurcalanarak fiyat değiştirilemez.
+ */
+export type CartLineInput =
+  | { kind: "product"; productId: string; variantSize?: string; qty: number }
+  | {
+      kind: "builder";
+      bread: string;
+      protein: string;
+      sauce: string;
+      veggies: string[];
+      qty: number;
+    };
+
+export type PricedLine = {
+  /** Sepette satırı benzersiz kılan anahtar (aynı yapılandırma = aynı satır). */
+  key: string;
+  input: CartLineInput;
+  label: string;
+  detail: string;
+  unitCents: number;
+  lineCents: number;
+  kcal: number;
+  qty: number;
+  /** Ürün menüden kalktıysa/silindiyse true; toplama dahil edilmez. */
+  unavailable: boolean;
+};
+
+export type Quote = {
+  lines: PricedLine[];
+  subtotalCents: number;
+  serviceFeeCents: number;
+  totalCents: number;
+  /** Ücretsiz servise kalan tutar; eşik yoksa veya aşıldıysa 0. */
+  remainingForFreeServiceCents: number;
+  freeServiceOverCents: number;
+  currency: "EUR";
+};
+
+const MAX_QTY = 99;
+
+function clampQty(qty: unknown): number {
+  const n = typeof qty === "number" ? Math.floor(qty) : Number.NaN;
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.min(n, MAX_QTY);
+}
+
+function optionLabel(option: BuilderOption, lang: "tr" | "de"): string {
+  return lang === "de" ? option.labelDe || option.label : option.label;
+}
+
+export function builderKey(input: Extract<CartLineInput, { kind: "builder" }>): string {
+  const veggies = Array.isArray(input.veggies) ? input.veggies.slice().sort().join(",") : "";
+  return `builder:${input.bread}|${input.protein}|${input.sauce}|${veggies}`;
+}
+
+export function productKey(productId: string, variantSize?: string): string {
+  return `product:${productId}|${variantSize ?? ""}`;
+}
+
+function priceBuilderLine(
+  catalog: Catalog,
+  input: Extract<CartLineInput, { kind: "builder" }>,
+  lang: "tr" | "de"
+): PricedLine {
+  const groups = new Map(catalog.builder.groups.map((g) => [g.id, g] as const));
+
+  /** Seçim bulunamazsa gruptaki ilk seçeneğe düşülür; satır fiyatsız kalmaz. */
+  const pick = (groupId: "bread" | "protein" | "sauce", id: string): BuilderOption | null => {
+    const group = groups.get(groupId);
+    if (!group) return null;
+    return group.options.find((o) => o.id === id) ?? group.options[0] ?? null;
+  };
+
+  const bread = pick("bread", input.bread);
+  const protein = pick("protein", input.protein);
+  const sauce = pick("sauce", input.sauce);
+  const veggieGroup = groups.get("veggies");
+  const veggies = (veggieGroup?.options ?? []).filter((o) =>
+    Array.isArray(input.veggies) ? input.veggies.includes(o.id) : false
+  );
+
+  const chosen = [bread, protein, sauce].filter((o): o is BuilderOption => o !== null);
+  const unitCents =
+    toCents(resolveBasePrice(catalog)) +
+    [...chosen, ...veggies].reduce((sum, o) => sum + toCents(o.price), 0);
+  const kcal = [...chosen, ...veggies].reduce((sum, o) => sum + o.kcal, 0);
+
+  const qty = clampQty(input.qty);
+  const names = chosen.map((o) => optionLabel(o, lang)).join(" • ");
+  const veggieNames = veggies.map((o) => optionLabel(o, lang)).join(", ");
+
+  const resolved: Extract<CartLineInput, { kind: "builder" }> = {
+    kind: "builder",
+    bread: bread?.id ?? input.bread,
+    protein: protein?.id ?? input.protein,
+    sauce: sauce?.id ?? input.sauce,
+    veggies: veggies.map((o) => o.id),
+    qty,
+  };
+
+  return {
+    key: builderKey(resolved),
+    input: resolved,
+    label: lang === "de" ? "Döner nach Wunsch" : "Kendin Hazırla Döner",
+    detail: veggieNames
+      ? `${names} • ${veggieNames}`
+      : `${names} • ${lang === "de" ? "ohne Gemüse" : "sebzesiz"}`,
+    unitCents,
+    lineCents: unitCents * qty,
+    kcal,
+    qty,
+    unavailable: chosen.length === 0,
+  };
+}
+
+function priceProductLine(
+  catalog: Catalog,
+  input: Extract<CartLineInput, { kind: "product" }>,
+  lang: "tr" | "de"
+): PricedLine {
+  const qty = clampQty(input.qty);
+  const product = catalog.products.find((p) => p.id === input.productId);
+  const key = productKey(input.productId, input.variantSize);
+
+  if (!product || !isVisible(product)) {
+    return {
+      key,
+      input: { ...input, qty },
+      label: product?.name ?? input.productId,
+      detail: "",
+      unitCents: 0,
+      lineCents: 0,
+      kcal: 0,
+      qty,
+      unavailable: true,
+    };
+  }
+
+  // Boy seçilmişse o boyun fiyatı geçerlidir; boy artık yoksa satır düşer.
+  const variant = input.variantSize
+    ? product.variants.find((v) => v.size === input.variantSize)
+    : undefined;
+  if (input.variantSize && !variant) {
+    return {
+      key,
+      input: { ...input, qty },
+      label: product.name,
+      detail: input.variantSize,
+      unitCents: 0,
+      lineCents: 0,
+      kcal: 0,
+      qty,
+      unavailable: true,
+    };
+  }
+
+  const unitCents = toCents(variant ? variant.price : effectivePrice(product));
+  const label = lang === "tr" ? product.nameTr || product.name : product.name;
+  const desc = lang === "tr" ? product.descriptionTr || product.description : product.description;
+
+  return {
+    key,
+    input: { ...input, qty },
+    label,
+    detail: variant ? [variant.size, desc].filter(Boolean).join(" — ") : desc,
+    unitCents,
+    lineCents: unitCents * qty,
+    kcal: 0,
+    qty,
+    unavailable: false,
+  };
+}
+
+/**
+ * Sepetin **tek geçerli** fiyat hesabı.
+ *
+ * Yapılandırıcı, sepet çekmecesi, ödeme adımı ve sipariş ucu aynı bu fonksiyonu
+ * kullanır; dolayısıyla ekranda görünen tutarla siparişe yazılan tutarın
+ * ayrışması mümkün değildir.
+ */
+export async function priceCart(
+  inputs: CartLineInput[],
+  lang: "tr" | "de" = "tr"
+): Promise<Quote> {
+  const catalog = await readCatalog();
+
+  const lines = inputs
+    .slice(0, 60)
+    .map((input) =>
+      input.kind === "builder"
+        ? priceBuilderLine(catalog, input, lang)
+        : priceProductLine(catalog, input, lang)
+    );
+
+  const subtotalCents = lines
+    .filter((l) => !l.unavailable)
+    .reduce((sum, l) => sum + l.lineCents, 0);
+
+  const { serviceFee, freeServiceOver } = catalog.settings;
+  const feeCents = toCents(serviceFee);
+  const thresholdCents = toCents(freeServiceOver);
+  const waived = subtotalCents === 0 || (thresholdCents > 0 && subtotalCents >= thresholdCents);
+  const serviceFeeCents = waived ? 0 : feeCents;
+
+  return {
+    lines,
+    subtotalCents,
+    serviceFeeCents,
+    totalCents: subtotalCents + serviceFeeCents,
+    remainingForFreeServiceCents:
+      thresholdCents > 0 && subtotalCents > 0 && subtotalCents < thresholdCents
+        ? thresholdCents - subtotalCents
+        : 0,
+    freeServiceOverCents: thresholdCents,
+    currency: "EUR",
+  };
+}
+
+/**
+ * Ana sayfadaki "öne çıkan lezzetler" bölümü.
+ *
+ * Sabit liste yerine katalogdan gelir: fiyat, ad ve görünürlük admin panelinden
+ * yönetilir. Görseli olan ürünler öne alınır, yoksa sıraya göre doldurulur.
+ */
+export async function getFeaturedProducts(limit = 3): Promise<Product[]> {
+  const { products } = await readCatalog();
+  const visible = products.filter(isVisible).sort((a, b) => a.sortOrder - b.sortOrder);
+  const withImage = visible.filter((p) => p.image);
+  return [...withImage, ...visible.filter((p) => !p.image)].slice(0, limit);
 }

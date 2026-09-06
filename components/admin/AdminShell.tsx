@@ -15,6 +15,7 @@ const NAV = [
   { href: "/admin", label: "Dashboard", exact: true },
   { href: "/admin/products", label: "Ürünler", exact: false },
   { href: "/admin/categories", label: "Kategoriler", exact: false },
+  { href: "/admin/pricing", label: "Fiyat ayarları", exact: false },
 ];
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
