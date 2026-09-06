@@ -6,6 +6,17 @@
   --font-display: "Unbounded", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
   --font-body: "Inter", sans-serif;
+
+  /* Sabit header'ın yüksekliği (duyuru şeridi + navigasyon).
+     Sayfaya yapışan öğeler (karta sayfasının kategori şeridi) ve bağlantı
+     hedefleri bu değeri kullanır, böylece navbarın altında kaybolmazlar. */
+  --nav-h: 88px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --nav-h: 92px;
+  }
 }
 
 * {

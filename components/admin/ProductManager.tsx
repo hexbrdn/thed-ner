@@ -17,35 +17,53 @@ import {
 } from "./ui";
 
 type Draft = {
+  no: string;
   name: string;
+  nameTr: string;
   description: string;
+  descriptionTr: string;
   categoryId: string;
   price: string;
   discountPrice: string;
   image: string;
   active: boolean;
   inStock: boolean;
+  showOnHome: boolean;
+  sortOrder: string;
   variants: { size: string; price: string }[];
 };
 
+/** Müşteri tarafındaki `isVisible` kuralının arayüzdeki karşılığı. */
+function visibleOnSite(p: Product): boolean {
+  return p.active && p.inStock && p.showOnHome;
+}
+
 function emptyDraft(categoryId: string): Draft {
   return {
+    no: "",
     name: "",
+    nameTr: "",
     description: "",
+    descriptionTr: "",
     categoryId,
     price: "",
     discountPrice: "",
     image: "",
     active: true,
     inStock: true,
+    showOnHome: true,
+    sortOrder: "",
     variants: [],
   };
 }
 
 function toDraft(product: Product): Draft {
   return {
+    no: product.no,
     name: product.name,
+    nameTr: product.nameTr,
     description: product.description,
+    descriptionTr: product.descriptionTr,
     categoryId: product.categoryId,
     price: String(product.price).replace(".", ","),
     discountPrice:
@@ -53,6 +71,8 @@ function toDraft(product: Product): Draft {
     image: product.image ?? "",
     active: product.active,
     inStock: product.inStock,
+    showOnHome: product.showOnHome,
+    sortOrder: String(product.sortOrder),
     variants: product.variants.map((v) => ({
       size: v.size,
       price: String(v.price).replace(".", ","),
@@ -67,14 +87,20 @@ function toPayload(draft: Draft) {
     .map((v) => ({ size: v.size.trim(), price: Number(v.price.replace(",", ".")) }));
 
   return {
+    no: draft.no.trim(),
     name: draft.name.trim(),
+    nameTr: draft.nameTr.trim(),
     description: draft.description.trim(),
+    descriptionTr: draft.descriptionTr.trim(),
     categoryId: draft.categoryId,
     price: Number(draft.price.replace(",", ".")),
     discountPrice: draft.discountPrice.trim() === "" ? null : Number(draft.discountPrice.replace(",", ".")),
     image: draft.image.trim() === "" ? null : draft.image.trim(),
     active: draft.active,
     inStock: draft.inStock,
+    showOnHome: draft.showOnHome,
+    // Boş bırakılırsa mevcut sıra korunur (yeni üründe listenin sonuna eklenir).
+    ...(draft.sortOrder.trim() === "" ? {} : { sortOrder: Number(draft.sortOrder.trim()) }),
     variants,
   };
 }
@@ -97,6 +123,7 @@ export default function ProductManager({
   const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
 
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [search, setSearch] = useState("");
 
   const categoryName = useMemo(
@@ -108,10 +135,18 @@ export default function ProductManager({
     const needle = search.trim().toLowerCase();
     return initialProducts.filter((p) => {
       if (categoryFilter && p.categoryId !== categoryFilter) return false;
-      if (needle && !p.name.toLowerCase().includes(needle)) return false;
+      if (
+        needle &&
+        !`${p.no} ${p.name} ${p.nameTr}`.toLowerCase().includes(needle)
+      ) {
+        return false;
+      }
+      if (statusFilter === "visible" && !visibleOnSite(p)) return false;
+      if (statusFilter === "hidden" && visibleOnSite(p)) return false;
+      if (statusFilter === "outofstock" && p.inStock) return false;
       return true;
     });
-  }, [initialProducts, categoryFilter, search]);
+  }, [initialProducts, categoryFilter, search, statusFilter]);
 
   async function send(url: string, method: string, body?: unknown) {
     setBusy(true);
@@ -159,6 +194,12 @@ export default function ProductManager({
   async function toggleStock(product: Product) {
     await send(`/api/admin/products/${encodeURIComponent(product.id)}`, "PATCH", {
       inStock: !product.inStock,
+    });
+  }
+
+  async function toggleShowOnHome(product: Product) {
+    await send(`/api/admin/products/${encodeURIComponent(product.id)}`, "PATCH", {
+      showOnHome: !product.showOnHome,
     });
   }
 
@@ -230,6 +271,17 @@ export default function ProductManager({
             </option>
           ))}
         </Select>
+        <Select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          aria-label="Duruma göre filtrele"
+          className="sm:max-w-[220px]"
+        >
+          <option value="">Tüm durumlar</option>
+          <option value="visible">Menüde görünenler</option>
+          <option value="hidden">Menüde görünmeyenler</option>
+          <option value="outofstock">Tükenenler</option>
+        </Select>
         <span className="tag text-smoke self-center tabular-nums">
           {visible.length} / {initialProducts.length} ürün
         </span>
@@ -259,9 +311,18 @@ export default function ProductManager({
             </div>
 
             <div className="flex-1 min-w-0">
-              <p className="font-display font-bold text-bone truncate">{product.name}</p>
+              <p className="font-display font-bold text-bone truncate">
+                {product.no && (
+                  <span className="font-mono text-sm text-flame mr-2 tabular-nums">
+                    {product.no}
+                  </span>
+                )}
+                {product.name}
+              </p>
               <p className="tag text-smoke mt-1">
                 {categoryName.get(product.categoryId) ?? product.categoryId}
+                <span className="text-smoke/50"> · sıra {product.sortOrder}</span>
+                {product.nameTr && <span className="text-smoke/50"> · TR: {product.nameTr}</span>}
               </p>
               {product.description && (
                 <p className="text-xs text-smoke/70 mt-1.5 line-clamp-2">{product.description}</p>
@@ -295,6 +356,12 @@ export default function ProductManager({
               <Badge tone={product.inStock ? "on" : "warn"}>
                 {product.inStock ? "STOKTA" : "TÜKENDİ"}
               </Badge>
+              <Badge tone={product.showOnHome ? "on" : "off"}>
+                {product.showOnHome ? "MENÜDE" : "MENÜDE DEĞİL"}
+              </Badge>
+              {!visibleOnSite(product) && (
+                <Badge tone="warn">SİTEDE GÖRÜNMÜYOR</Badge>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-2 shrink-0">
@@ -311,6 +378,13 @@ export default function ProductManager({
                 className="focus-ring tag border border-line px-3 py-2 text-smoke hover:border-amber hover:text-amber transition-colors disabled:opacity-40"
               >
                 {product.inStock ? "TÜKENDİ" : "STOĞA AL"}
+              </button>
+              <button
+                onClick={() => toggleShowOnHome(product)}
+                disabled={busy}
+                className="focus-ring tag border border-line px-3 py-2 text-smoke hover:border-amber hover:text-amber transition-colors disabled:opacity-40"
+              >
+                {product.showOnHome ? "MENÜDEN ÇIKAR" : "MENÜYE AL"}
               </button>
               <button
                 onClick={() => {
@@ -421,22 +495,51 @@ function ProductForm({
         </h2>
 
         <div className="space-y-5">
-          <Field label="Ürün adı">
+          <div className="grid sm:grid-cols-[110px_1fr] gap-5">
+            <Field label="Menü no" hint="Menüdeki sipariş numarası.">
+              <TextInput
+                maxLength={8}
+                value={draft.no}
+                onChange={(e) => set("no", e.target.value)}
+                placeholder="01"
+              />
+            </Field>
+
+            <Field label="Ürün adı (DE)">
+              <TextInput
+                required
+                maxLength={120}
+                value={draft.name}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder="Drehspieß"
+              />
+            </Field>
+          </div>
+
+          <Field label="Ürün adı (TR)" hint="Boş bırakılırsa Türkçe sitede Almanca ad kullanılır.">
             <TextInput
-              required
               maxLength={120}
-              value={draft.name}
-              onChange={(e) => set("name", e.target.value)}
-              placeholder="Döner-Tasche"
+              value={draft.nameTr}
+              onChange={(e) => set("nameTr", e.target.value)}
+              placeholder="Döner"
             />
           </Field>
 
-          <Field label="Açıklama">
+          <Field label="Açıklama (DE)">
             <TextArea
               maxLength={400}
               value={draft.description}
               onChange={(e) => set("description", e.target.value)}
-              placeholder="Dönerfleisch im Fladenbrot mit Salat und Sauce."
+              placeholder="Putenfleisch, Salat und Soße"
+            />
+          </Field>
+
+          <Field label="Açıklama (TR)" hint="Boş bırakılırsa Almanca açıklama gösterilir.">
+            <TextArea
+              maxLength={400}
+              value={draft.descriptionTr}
+              onChange={(e) => set("descriptionTr", e.target.value)}
+              placeholder="Hindi eti, salata ve sos"
             />
           </Field>
 
@@ -487,6 +590,19 @@ function ProductForm({
               />
             </Field>
           </div>
+
+          <Field
+            label="Menüdeki sıra"
+            hint="Küçük sayı üstte görünür. Boş bırakılırsa mevcut sıra korunur."
+          >
+            <TextInput
+              inputMode="numeric"
+              value={draft.sortOrder}
+              onChange={(e) => set("sortOrder", e.target.value)}
+              placeholder="0"
+              className="sm:max-w-[160px]"
+            />
+          </Field>
 
           {/* boyut varyasyonları */}
           <div>
@@ -551,7 +667,19 @@ function ProductForm({
               onLabel="STOKTA"
               offLabel="TÜKENDİ"
             />
+            <Toggle
+              checked={draft.showOnHome}
+              onChange={(v) => set("showOnHome", v)}
+              onLabel="MENÜDE GÖSTER"
+              offLabel="MENÜDE GİZLE"
+            />
           </div>
+
+          <p className="text-xs text-smoke/70 border border-line bg-void px-4 py-3">
+            Ürünün müşteri menüsünde görünmesi için üç anahtarın da açık olması
+            gerekir: aktif, stokta ve menüde göster. Biri kapatıldığında ürün
+            kaydedilir kaydedilmez menüden düşer; tekrar açıldığında geri gelir.
+          </p>
 
           {error && <Notice kind="error" message={error} />}
         </div>

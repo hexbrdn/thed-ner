@@ -226,11 +226,13 @@ export const trTranslations = {
     addedToCart: "Sepete eklendi",
   },
   menuGrid: {
-    tag: "Popüler Menüler",
-    title1: "FAVORİ",
+    tag: "Menü",
+    title1: "TÜM",
     title2: "LEZZETLER",
-    subText: "Sami´s Döner'in en çok tercih edilen taze lezzetleri.",
+    subText: "Sami´s Döner'in tüm menüsü, güncel fiyatlarıyla.",
     addToCart: "SEPETE EKLE →",
+    categoryNavLabel: "Kategori seçimi",
+    empty: "Şu anda satışta ürün bulunmuyor. Lütfen daha sonra tekrar bakın.",
   },
   cart: {
     title: "Sepetin",

@@ -230,11 +230,13 @@ export const deTranslations: Translations = {
     addedToCart: "Hinzugefügt",
   },
   menuGrid: {
-    tag: "Beliebte Gerichte",
+    tag: "Speisekarte",
     title1: "UNSERE",
-    title2: "KLASSIKER",
-    subText: "Die beliebtesten Gerichte bei Sami´s Döner.",
+    title2: "SPEISEKARTE",
+    subText: "Die ganze Auswahl bei Sami´s Döner, mit aktuellen Preisen.",
     addToCart: "IN DEN WARENKORB →",
+    categoryNavLabel: "Kategorieauswahl",
+    empty: "Zurzeit sind keine Gerichte verfügbar. Bitte schauen Sie später wieder vorbei.",
   },
   cart: {
     title: "Warenkorb",

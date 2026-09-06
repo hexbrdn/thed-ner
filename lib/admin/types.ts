@@ -18,30 +18,56 @@ export type Variant = {
 
 export type Product = {
   id: string;
+  /** Menüdeki sipariş numarası ("01", "80"). İçeceklerde yoktur. */
+  no: string;
   name: string;
+  /** Türkçe ad; boşsa müşteri tarafında Almanca `name` kullanılır. */
+  nameTr: string;
   description: string;
+  /** Türkçe açıklama; boşsa `description` kullanılır. */
+  descriptionTr: string;
   categoryId: string;
   /** Varyasyonlu üründe ilk varyasyonun fiyatı; liste/sıralama için taban */
   price: number;
   /** null = indirim yok. Set edilmişse müşteri tarafında üstü çizili fiyat gösterilir. */
   discountPrice: number | null;
   image: string | null;
+  /** Ürünün kaydı yayında mı. Pasifse müşteri tarafında hiç görünmez. */
   active: boolean;
+  /** Gün içi stok durumu. Tükendiyse menüden düşer. */
   inStock: boolean;
+  /** Aktif olsa bile menü/ana sayfa listesinde gösterilsin mi. */
+  showOnHome: boolean;
   variants: Variant[];
+  /** Menüdeki sıra; küçük olan üstte. */
   sortOrder: number;
 };
 
 export type Category = {
   id: string;
   name: string;
+  /** Türkçe kategori başlığı; boşsa `name` kullanılır. */
+  nameTr: string;
+  /** Kategorinin tamamı için geçerli not (ekstra malzeme, depozito …). */
+  note: string;
+  noteTr: string;
   sortOrder: number;
 };
 
 export type Catalog = {
+  /** Şema sürümü. Artarsa depo kaynak menüden yeniden kurulur. */
+  version: number;
   categories: Category[];
   products: Product[];
 };
+
+/**
+ * Depodaki şema sürümü.
+ *
+ * 1 → eski demo menüsü (`data/menu.ts`).
+ * 2 → gerçek karta (`data/speisekarte.ts`) + no/TR alanları + showOnHome.
+ */
+export const CATALOG_VERSION = 2;
 
 /** Müşteri tarafına gönderilen, kategorileriyle gruplanmış görünüm. */
 export type PublicCategory = Category & { products: Product[] };

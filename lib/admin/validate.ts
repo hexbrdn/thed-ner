@@ -1,4 +1,4 @@
-import type { ProductInput } from "./store";
+import type { ProductPatch } from "./store";
 import type { Variant } from "./types";
 
 /**
@@ -64,16 +64,25 @@ function asImage(value: unknown): Result<string | null> {
   return { ok: true, value: trimmed };
 }
 
+function asSortOrder(value: unknown): Result<number> {
+  const num = typeof value === "string" ? Number(value.trim()) : value;
+  if (typeof num !== "number" || !Number.isFinite(num)) {
+    return { ok: false, error: "Sıra numarası sayı olmalı." };
+  }
+  if (num < 0 || num > 1_000_000) return { ok: false, error: "Sıra numarası aralık dışı." };
+  return { ok: true, value: Math.round(num) };
+}
+
 export function parseProductBody(
   body: unknown,
   categoryIds: string[],
   partial: boolean
-): Result<Partial<ProductInput>> {
+): Result<ProductPatch> {
   if (typeof body !== "object" || body === null) {
     return { ok: false, error: "Geçersiz istek gövdesi." };
   }
   const input = body as Record<string, unknown>;
-  const out: Partial<ProductInput> = {};
+  const out: ProductPatch = {};
 
   const has = (key: string) => Object.prototype.hasOwnProperty.call(input, key);
   const need = (key: string) => !partial || has(key);
@@ -84,10 +93,28 @@ export function parseProductBody(
     out.name = r.value;
   }
 
+  if (need("nameTr")) {
+    const r = asString(input.nameTr, "Türkçe ad", 120, false);
+    if (!r.ok) return r;
+    out.nameTr = r.value;
+  }
+
+  if (need("no")) {
+    const r = asString(input.no, "Menü numarası", 8, false);
+    if (!r.ok) return r;
+    out.no = r.value;
+  }
+
   if (need("description")) {
     const r = asString(input.description, "Açıklama", MAX_TEXT, false);
     if (!r.ok) return r;
     out.description = r.value;
+  }
+
+  if (need("descriptionTr")) {
+    const r = asString(input.descriptionTr, "Türkçe açıklama", MAX_TEXT, false);
+    if (!r.ok) return r;
+    out.descriptionTr = r.value;
   }
 
   if (need("categoryId")) {
@@ -133,6 +160,16 @@ export function parseProductBody(
 
   if (has("inStock")) out.inStock = Boolean(input.inStock);
   else if (!partial) out.inStock = true;
+
+  if (has("showOnHome")) out.showOnHome = Boolean(input.showOnHome);
+  else if (!partial) out.showOnHome = true;
+
+  // Sıra yalnızca gönderildiğinde değişir; yeni üründe depo sonuna eklenir.
+  if (has("sortOrder")) {
+    const r = asSortOrder(input.sortOrder);
+    if (!r.ok) return r;
+    out.sortOrder = r.value;
+  }
 
   // İndirimli fiyat taban fiyattan yüksek olamaz.
   const price = out.price;

@@ -1,550 +1,1745 @@
 {
+  "version": 2,
   "categories": [
     {
-      "id": "fuer-sie-das-beste",
-      "name": "Für Sie Das Beste",
+      "id": "drehspiess",
+      "name": "Drehspieß",
+      "nameTr": "Döner",
+      "note": "",
+      "noteTr": "",
       "sortOrder": 0
     },
     {
-      "id": "original-doener",
-      "name": "Original-DÖNER",
+      "id": "snacks",
+      "name": "Snack's",
+      "nameTr": "Atıştırmalıklar",
+      "note": "",
+      "noteTr": "",
       "sortOrder": 1
     },
     {
-      "id": "schueler-menue",
-      "name": "Schüler-Menü",
+      "id": "verschiedenes",
+      "name": "Verschiedenes",
+      "nameTr": "Çeşitli",
+      "note": "",
+      "noteTr": "",
       "sortOrder": 2
+    },
+    {
+      "id": "lahmacun",
+      "name": "Lahmacun",
+      "nameTr": "",
+      "note": "",
+      "noteTr": "",
+      "sortOrder": 3
+    },
+    {
+      "id": "pide",
+      "name": "Pide",
+      "nameTr": "",
+      "note": "",
+      "noteTr": "",
+      "sortOrder": 4
+    },
+    {
+      "id": "calzone",
+      "name": "Calzone",
+      "nameTr": "",
+      "note": "",
+      "noteTr": "",
+      "sortOrder": 5
+    },
+    {
+      "id": "pizza",
+      "name": "Pizza",
+      "nameTr": "",
+      "note": "Pizza Extra Belag: +1,00 €",
+      "noteTr": "Pizza ekstra malzeme: +1,00 €",
+      "sortOrder": 6
+    },
+    {
+      "id": "salat",
+      "name": "Salat",
+      "nameTr": "Salatalar",
+      "note": "",
+      "noteTr": "",
+      "sortOrder": 7
     },
     {
       "id": "getraenke",
       "name": "Getränke",
-      "sortOrder": 3
+      "nameTr": "İçecekler",
+      "note": "Alle Getränke zzgl. 0,25 € Pfand",
+      "noteTr": "Tüm içeceklere 0,25 € depozito eklenir",
+      "sortOrder": 8
     }
   ],
   "products": [
     {
-      "id": "fuer-sie-das-beste--doener-duerum",
-      "name": "Döner-Dürüm",
-      "description": "Dönerfleisch im Blätterteig mit Salat und Sauce.",
-      "categoryId": "fuer-sie-das-beste",
-      "price": 9,
-      "discountPrice": null,
-      "image": "/assets/menu-ateshane.webp",
-      "active": true,
-      "inStock": true,
-      "variants": [
-        {
-          "size": "",
-          "price": 9
-        }
-      ],
-      "sortOrder": 1
-    },
-    {
-      "id": "fuer-sie-das-beste--pom-doener",
-      "name": "Pom-Döner ( in Döner-Box )",
-      "description": "Dönerfleisch mit Pommes und Salat.",
-      "categoryId": "fuer-sie-das-beste",
+      "id": "drehspiess--drehspiess-xl-03",
+      "no": "03",
+      "name": "Drehspieß XL",
+      "nameTr": "Döner XL",
+      "description": "Viel Putenfleisch, Salat und Soße",
+      "descriptionTr": "Bol hindi eti, salata ve sos",
+      "categoryId": "drehspiess",
       "price": 9,
       "discountPrice": null,
       "image": null,
       "active": true,
       "inStock": true,
-      "variants": [
-        {
-          "size": "",
-          "price": 9
-        }
-      ],
+      "showOnHome": true,
+      "variants": [],
       "sortOrder": 2
     },
     {
-      "id": "fuer-sie-das-beste--doener-teller",
-      "name": "Döner-Teller",
-      "description": "Dönerfleisch mit Salat und Pommes oder Reis.",
-      "categoryId": "fuer-sie-das-beste",
-      "price": 14,
+      "id": "drehspiess--dueruem-drehspiess-04",
+      "no": "04",
+      "name": "Dürüm Drehspieß",
+      "nameTr": "Dürüm Döner",
+      "description": "Teigrolle mit Fleisch, Salat und Soße",
+      "descriptionTr": "Etli dürüm, salata ve sos",
+      "categoryId": "drehspiess",
+      "price": 8,
       "discountPrice": null,
-      "image": "/assets/menu-iki-dunya.webp",
+      "image": null,
       "active": true,
       "inStock": true,
-      "variants": [
-        {
-          "size": "",
-          "price": 14
-        }
-      ],
+      "showOnHome": true,
+      "variants": [],
       "sortOrder": 3
     },
     {
-      "id": "fuer-sie-das-beste--doenerfleisch",
-      "name": "Dönerfleisch",
-      "description": "Dönerfleisch in Tellerbox.",
-      "categoryId": "fuer-sie-das-beste",
-      "price": 10,
+      "id": "drehspiess--cheese-dueruem-05",
+      "no": "05",
+      "name": "Cheese Dürüm",
+      "nameTr": "Peynirli Dürüm",
+      "description": "Teigrolle mit Fleisch, Salat, Käse und Soße",
+      "descriptionTr": "Etli dürüm, salata, peynir ve sos",
+      "categoryId": "drehspiess",
+      "price": 9,
       "discountPrice": null,
-      "image": "/assets/ing-meat.webp",
+      "image": null,
       "active": true,
       "inStock": true,
-      "variants": [
-        {
-          "size": "kl.",
-          "price": 10
-        },
-        {
-          "size": "gr.",
-          "price": 18
-        }
-      ],
+      "showOnHome": true,
+      "variants": [],
       "sortOrder": 4
     },
     {
-      "id": "fuer-sie-das-beste--saucen-schale",
-      "name": "Mayo-, Ketchup-, Zaziki-, Curry Soße- Schale",
-      "description": "",
-      "categoryId": "fuer-sie-das-beste",
-      "price": 0.7,
+      "id": "drehspiess--drehspiess-box-06",
+      "no": "06",
+      "name": "Drehspieß Box",
+      "nameTr": "Döner Box",
+      "description": "Pommes / Reis, Salat, Putenfleisch und Soße",
+      "descriptionTr": "Patates kızartması / pilav, salata, hindi eti ve sos",
+      "categoryId": "drehspiess",
+      "price": 7,
       "discountPrice": null,
-      "image": "/assets/ing-sauce.webp",
+      "image": null,
       "active": true,
       "inStock": true,
-      "variants": [
-        {
-          "size": "kl.",
-          "price": 0.7
-        },
-        {
-          "size": "gr.",
-          "price": 1.5
-        }
-      ],
+      "showOnHome": true,
+      "variants": [],
       "sortOrder": 5
     },
     {
-      "id": "fuer-sie-das-beste--pommes",
-      "name": "Pommes",
-      "description": "",
-      "categoryId": "fuer-sie-das-beste",
-      "price": 3.5,
+      "id": "drehspiess--drehspiess-teller-07",
+      "no": "07",
+      "name": "Drehspieß Teller",
+      "nameTr": "Döner Tabağı",
+      "description": "Salat und Soße",
+      "descriptionTr": "Salata ve sos",
+      "categoryId": "drehspiess",
+      "price": 12,
       "discountPrice": null,
       "image": null,
       "active": true,
       "inStock": true,
-      "variants": [
-        {
-          "size": "kl.",
-          "price": 3.5
-        },
-        {
-          "size": "gr.",
-          "price": 4.5
-        }
-      ],
+      "showOnHome": true,
+      "variants": [],
       "sortOrder": 6
     },
     {
-      "id": "fuer-sie-das-beste--pommes-spezial",
-      "name": "Pommes Spezial",
-      "description": "",
-      "categoryId": "fuer-sie-das-beste",
-      "price": 5.6,
+      "id": "drehspiess--drehspiess-teller-08",
+      "no": "08",
+      "name": "Drehspieß Teller",
+      "nameTr": "Döner Tabağı",
+      "description": "Reis, Salat und Soße",
+      "descriptionTr": "Pilav, salata ve sos",
+      "categoryId": "drehspiess",
+      "price": 12,
       "discountPrice": null,
       "image": null,
       "active": true,
       "inStock": true,
-      "variants": [
-        {
-          "size": "",
-          "price": 5.6
-        }
-      ],
+      "showOnHome": true,
+      "variants": [],
       "sortOrder": 7
     },
     {
-      "id": "fuer-sie-das-beste--sucuk-tasche",
-      "name": "Sucuk-Tasche",
-      "description": "Knoblauchwurst im Fladenbrot mit Salat.",
-      "categoryId": "fuer-sie-das-beste",
-      "price": 8,
+      "id": "drehspiess--drehspiess-teller-09",
+      "no": "09",
+      "name": "Drehspieß Teller",
+      "nameTr": "Döner Tabağı",
+      "description": "Pommes, Salat und Soße",
+      "descriptionTr": "Patates kızartması, salata ve sos",
+      "categoryId": "drehspiess",
+      "price": 12,
       "discountPrice": null,
       "image": null,
       "active": true,
       "inStock": true,
-      "variants": [
-        {
-          "size": "",
-          "price": 8
-        }
-      ],
+      "showOnHome": true,
+      "variants": [],
       "sortOrder": 8
     },
     {
-      "id": "fuer-sie-das-beste--falafel-tasche",
-      "name": "Falafel-Tasche",
-      "description": "Kichererbsenfrikadellen im Fladenbrot mit Salat.",
-      "categoryId": "fuer-sie-das-beste",
-      "price": 8,
-      "discountPrice": null,
-      "image": null,
-      "active": true,
-      "inStock": true,
-      "variants": [
-        {
-          "size": "",
-          "price": 8
-        }
-      ],
-      "sortOrder": 9
-    },
-    {
-      "id": "fuer-sie-das-beste--falafel-teller",
-      "name": "Falafel-Teller",
-      "description": "Kichererbsenfrikadellen mit Pommes und Salat.",
-      "categoryId": "fuer-sie-das-beste",
+      "id": "drehspiess--drehspiess-teller-ueberbacken-10",
+      "no": "10",
+      "name": "Drehspieß Teller überbacken",
+      "nameTr": "Fırınlanmış Döner Tabağı",
+      "description": "Salat und Soße",
+      "descriptionTr": "Salata ve sos",
+      "categoryId": "drehspiess",
       "price": 13,
       "discountPrice": null,
       "image": null,
       "active": true,
       "inStock": true,
-      "variants": [
-        {
-          "size": "",
-          "price": 13
-        }
-      ],
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 9
+    },
+    {
+      "id": "drehspiess--drehspiess-teller-ueberbacken-11",
+      "no": "11",
+      "name": "Drehspieß Teller überbacken",
+      "nameTr": "Fırınlanmış Döner Tabağı",
+      "description": "Reis, Salat und Soße",
+      "descriptionTr": "Pilav, salata ve sos",
+      "categoryId": "drehspiess",
+      "price": 13,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
       "sortOrder": 10
     },
     {
-      "id": "original-doener--lahmacun-salat",
-      "name": "Türkische Pizza / Lahmacun",
-      "description": "+ Salat.",
-      "categoryId": "original-doener",
+      "id": "drehspiess--vegetarisch-12",
+      "no": "12",
+      "name": "Vegetarisch",
+      "nameTr": "Vejetaryen",
+      "description": "Im Fladenbrot, Salat, Käse und Soße",
+      "descriptionTr": "Pide ekmeğinde, salata, peynir ve sos",
+      "categoryId": "drehspiess",
       "price": 6,
       "discountPrice": null,
       "image": null,
       "active": true,
       "inStock": true,
-      "variants": [
-        {
-          "size": "",
-          "price": 6
-        }
-      ],
-      "sortOrder": 100
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 11
     },
     {
-      "id": "original-doener--lahmacun-doenerfleisch",
-      "name": "Türkische Pizza / Lahmacun",
-      "description": "+ Dönerfleisch und Salat.",
-      "categoryId": "original-doener",
+      "id": "drehspiess--dueruem-vegetarisch-13",
+      "no": "13",
+      "name": "Dürüm Vegetarisch",
+      "nameTr": "Vejetaryen Dürüm",
+      "description": "Salat und Käse",
+      "descriptionTr": "Salata ve peynir",
+      "categoryId": "drehspiess",
+      "price": 7,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 12
+    },
+    {
+      "id": "drehspiess--drehspiesspfanne-14",
+      "no": "14",
+      "name": "Drehspießpfanne",
+      "nameTr": "Döner Sote",
+      "description": "Drehspießfleisch und Gemüse",
+      "descriptionTr": "Döner eti ve sebze",
+      "categoryId": "drehspiess",
+      "price": 8,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 13
+    },
+    {
+      "id": "drehspiess--dueruempfanne-15",
+      "no": "15",
+      "name": "Dürümpfanne",
+      "nameTr": "Dürüm Sote",
+      "description": "Drehspießfleisch und Gemüse",
+      "descriptionTr": "Döner eti ve sebze",
+      "categoryId": "drehspiess",
       "price": 9,
       "discountPrice": null,
       "image": null,
       "active": true,
       "inStock": true,
-      "variants": [
-        {
-          "size": "",
-          "price": 9
-        }
-      ],
-      "sortOrder": 101
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 14
     },
     {
-      "id": "original-doener--boerek",
-      "name": "Börek",
-      "description": "türkische Teigspezialitäten.",
-      "categoryId": "original-doener",
-      "price": 1.5,
-      "discountPrice": null,
-      "image": null,
-      "active": true,
-      "inStock": true,
-      "variants": [
-        {
-          "size": "Rolle",
-          "price": 1.5
-        },
-        {
-          "size": "Dreieck",
-          "price": 2
-        },
-        {
-          "size": "Schnecke",
-          "price": 3
-        }
-      ],
-      "sortOrder": 102
-    },
-    {
-      "id": "original-doener--gemischter-salat",
-      "name": "Gemischter Salat",
-      "description": "",
-      "categoryId": "original-doener",
-      "price": 5,
-      "discountPrice": null,
-      "image": "/assets/ing-lettuce.webp",
-      "active": true,
-      "inStock": true,
-      "variants": [
-        {
-          "size": "",
-          "price": 5
-        }
-      ],
-      "sortOrder": 103
-    },
-    {
-      "id": "original-doener--salat-tasche",
-      "name": "Salat-Tasche",
-      "description": "Gemischter Salat im Fladenbrot mit Sauce.",
-      "categoryId": "original-doener",
-      "price": 5,
-      "discountPrice": null,
-      "image": null,
-      "active": true,
-      "inStock": true,
-      "variants": [
-        {
-          "size": "",
-          "price": 5
-        }
-      ],
-      "sortOrder": 104
-    },
-    {
-      "id": "original-doener--iskender-doener",
-      "name": "Iskender-Döner",
-      "description": "+ kleine Fladenbrotwürfel, Tomatensauce und Joguhrt.",
-      "categoryId": "original-doener",
-      "price": 10,
-      "discountPrice": null,
-      "image": null,
-      "active": true,
-      "inStock": true,
-      "variants": [
-        {
-          "size": "",
-          "price": 10
-        }
-      ],
-      "sortOrder": 105
-    },
-    {
-      "id": "original-doener--suppe",
-      "name": "Suppe",
-      "description": "Täglich wechselnden Suppen.",
-      "categoryId": "original-doener",
-      "price": 3.5,
-      "discountPrice": null,
-      "image": null,
-      "active": true,
-      "inStock": true,
-      "variants": [
-        {
-          "size": "",
-          "price": 3.5
-        }
-      ],
-      "sortOrder": 106
-    },
-    {
-      "id": "schueler-menue--schueler-menue",
-      "name": "Schüler-Menü",
-      "description": "Döner Tasche (klein) + kleine Pommes und Durstlöscher.",
-      "categoryId": "schueler-menue",
-      "price": 10.5,
-      "discountPrice": null,
-      "image": null,
-      "active": true,
-      "inStock": true,
-      "variants": [
-        {
-          "size": "",
-          "price": 10.5
-        }
-      ],
-      "sortOrder": 200
-    },
-    {
-      "id": "schueler-menue--menue-1",
-      "name": "Menü 1",
-      "description": "Türk. Pizza mit Dönerfleisch und Salat + kleine Pommes und Ayran.",
-      "categoryId": "schueler-menue",
+      "id": "drehspiess--fleischpfanne-16",
+      "no": "16",
+      "name": "Fleischpfanne",
+      "nameTr": "Et Sote",
+      "description": "Pommes und Salat",
+      "descriptionTr": "Patates kızartması ve salata",
+      "categoryId": "drehspiess",
       "price": 13,
       "discountPrice": null,
       "image": null,
       "active": true,
       "inStock": true,
-      "variants": [
-        {
-          "size": "",
-          "price": 13
-        }
-      ],
-      "sortOrder": 201
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 15
     },
     {
-      "id": "schueler-menue--menue-2",
-      "name": "Menü 2",
-      "description": "Döner Dürüm ( gerollt ) + kleine Pommes und Durstlöscher.",
-      "categoryId": "schueler-menue",
-      "price": 13,
+      "id": "drehspiess--frikadelle-17",
+      "no": "17",
+      "name": "Frikadelle",
+      "nameTr": "Köfte",
+      "description": "Im Fladenbrot, Salat und Soße",
+      "descriptionTr": "Pide ekmeğinde, salata ve sos",
+      "categoryId": "drehspiess",
+      "price": 7.5,
       "discountPrice": null,
       "image": null,
       "active": true,
       "inStock": true,
-      "variants": [
-        {
-          "size": "",
-          "price": 13
-        }
-      ],
-      "sortOrder": 202
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 16
     },
     {
-      "id": "schueler-menue--menue-3",
-      "name": "Menü 3",
-      "description": "Falafel Tasche mit Salat + kleine Pommes und Ayran.",
-      "categoryId": "schueler-menue",
+      "id": "drehspiess--dueruemfrikadelle-18",
+      "no": "18",
+      "name": "Dürümfrikadelle",
+      "nameTr": "Köfte Dürüm",
+      "description": "Salat und Soße",
+      "descriptionTr": "Salata ve sos",
+      "categoryId": "drehspiess",
+      "price": 8.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 17
+    },
+    {
+      "id": "drehspiess--frikadellenbox-19",
+      "no": "19",
+      "name": "Frikadellenbox",
+      "nameTr": "Köfte Box",
+      "description": "Pommes, Salat und Soße",
+      "descriptionTr": "Patates kızartması, salata ve sos",
+      "categoryId": "drehspiess",
+      "price": 8.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 18
+    },
+    {
+      "id": "drehspiess--frikadellenteller-20",
+      "no": "20",
+      "name": "Frikadellenteller",
+      "nameTr": "Köfte Tabağı",
+      "description": "Pommes, Salat und Soße",
+      "descriptionTr": "Patates kızartması, salata ve sos",
+      "categoryId": "drehspiess",
       "price": 14,
       "discountPrice": null,
       "image": null,
       "active": true,
       "inStock": true,
-      "variants": [
-        {
-          "size": "",
-          "price": 14
-        }
-      ],
-      "sortOrder": 203
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 19
     },
     {
-      "id": "schueler-menue--menues-mit-cola",
-      "name": "Alle Menüs mit Cola",
-      "description": "",
-      "categoryId": "schueler-menue",
-      "price": 1,
+      "id": "drehspiess--falafel-21",
+      "no": "21",
+      "name": "Falafel",
+      "nameTr": "",
+      "description": "Im Fladenbrot, Salat und Soße",
+      "descriptionTr": "Pide ekmeğinde, salata ve sos",
+      "categoryId": "drehspiess",
+      "price": 7,
       "discountPrice": null,
       "image": null,
       "active": true,
       "inStock": true,
-      "variants": [
-        {
-          "size": "",
-          "price": 1
-        }
-      ],
-      "sortOrder": 204
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 20
     },
     {
-      "id": "getraenke--softdrinks",
-      "name": "Cola, Cola Light, Fanta, Sprite, Mexo Mix",
-      "description": "",
-      "categoryId": "getraenke",
-      "price": 2.25,
+      "id": "drehspiess--falafel-dueruem-22",
+      "no": "22",
+      "name": "Falafel Dürüm",
+      "nameTr": "",
+      "description": "Salat und Soße",
+      "descriptionTr": "Salata ve sos",
+      "categoryId": "drehspiess",
+      "price": 8,
       "discountPrice": null,
       "image": null,
       "active": true,
       "inStock": true,
-      "variants": [
-        {
-          "size": "0,5 l",
-          "price": 2.25
-        }
-      ],
-      "sortOrder": 300
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 21
     },
     {
-      "id": "getraenke--wasser",
-      "name": "Wasser",
-      "description": "",
-      "categoryId": "getraenke",
-      "price": 2,
+      "id": "drehspiess--falafel-teller-23",
+      "no": "23",
+      "name": "Falafel Teller",
+      "nameTr": "Falafel Tabağı",
+      "description": "6 Stück, Salat und Pommes",
+      "descriptionTr": "6 adet, salata ve patates kızartması",
+      "categoryId": "drehspiess",
+      "price": 10,
       "discountPrice": null,
       "image": null,
       "active": true,
       "inStock": true,
-      "variants": [
-        {
-          "size": "0,5 l",
-          "price": 2
-        }
-      ],
-      "sortOrder": 301
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 22
     },
     {
-      "id": "getraenke--ayran-durstloescher",
-      "name": "Ayran, Durstlöscher",
+      "id": "snacks--hamburger-24",
+      "no": "24",
+      "name": "Hamburger",
+      "nameTr": "",
+      "description": "Salat",
+      "descriptionTr": "Salata",
+      "categoryId": "snacks",
+      "price": 6,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 1000
+    },
+    {
+      "id": "snacks--cheeseburger-25",
+      "no": "25",
+      "name": "Cheeseburger",
+      "nameTr": "",
+      "description": "Salat und Käse",
+      "descriptionTr": "Salata ve peynir",
+      "categoryId": "snacks",
+      "price": 6.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 1001
+    },
+    {
+      "id": "snacks--hamburger-combo-26",
+      "no": "26",
+      "name": "Hamburger Combo",
+      "nameTr": "",
+      "description": "Rindfleisch, Salat, Pommes und Getränk",
+      "descriptionTr": "Dana eti, salata, patates kızartması ve içecek",
+      "categoryId": "snacks",
+      "price": 10,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 1002
+    },
+    {
+      "id": "snacks--kalamari-teller-27",
+      "no": "27",
+      "name": "Kalamari Teller",
+      "nameTr": "Kalamar Tabağı",
+      "description": "Pommes und Salat",
+      "descriptionTr": "Patates kızartması ve salata",
+      "categoryId": "snacks",
+      "price": 12,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 1003
+    },
+    {
+      "id": "snacks--schrimps-teller-28",
+      "no": "28",
+      "name": "Schrimps Teller",
+      "nameTr": "Karides Tabağı",
+      "description": "8 Stück, Pommes und Salat",
+      "descriptionTr": "8 adet, patates kızartması ve salata",
+      "categoryId": "snacks",
+      "price": 13,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 1004
+    },
+    {
+      "id": "verschiedenes--chicken-nuggets-31",
+      "no": "31",
+      "name": "Chicken Nuggets",
+      "nameTr": "Tavuk Nugget",
+      "description": "5 Stück, Salat und Pommes",
+      "descriptionTr": "5 adet, salata ve patates kızartması",
+      "categoryId": "verschiedenes",
+      "price": 6,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 2000
+    },
+    {
+      "id": "verschiedenes--chicken-nuggets-teller-32",
+      "no": "32",
+      "name": "Chicken Nuggets Teller",
+      "nameTr": "Tavuk Nugget Tabağı",
+      "description": "10 Stück, Salat und Pommes",
+      "descriptionTr": "10 adet, salata ve patates kızartması",
+      "categoryId": "verschiedenes",
+      "price": 10,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 2001
+    },
+    {
+      "id": "verschiedenes--schnitzel-wiener-art-33",
+      "no": "33",
+      "name": "Schnitzel Wiener Art",
+      "nameTr": "Viyana Usulü Şnitzel",
+      "description": "Salat oder Pommes",
+      "descriptionTr": "Salata veya patates kızartması",
+      "categoryId": "verschiedenes",
+      "price": 8,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 2002
+    },
+    {
+      "id": "verschiedenes--pommes-34",
+      "no": "34",
+      "name": "Pommes",
+      "nameTr": "Patates Kızartması",
       "description": "",
+      "descriptionTr": "",
+      "categoryId": "verschiedenes",
+      "price": 3.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 2003
+    },
+    {
+      "id": "lahmacun--lahmacun-solo-40",
+      "no": "40",
+      "name": "Lahmacun Solo",
+      "nameTr": "Lahmacun (Sade)",
+      "description": "",
+      "descriptionTr": "",
+      "categoryId": "lahmacun",
+      "price": 5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 3000
+    },
+    {
+      "id": "lahmacun--lahmacun-41",
+      "no": "41",
+      "name": "Lahmacun",
+      "nameTr": "",
+      "description": "Salat und Soße",
+      "descriptionTr": "Salata ve sos",
+      "categoryId": "lahmacun",
+      "price": 7,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 3001
+    },
+    {
+      "id": "lahmacun--lahmacun-drehspiess-42",
+      "no": "42",
+      "name": "Lahmacun Drehspieß",
+      "nameTr": "Dönerli Lahmacun",
+      "description": "Putenfleisch, Salat und Soße",
+      "descriptionTr": "Hindi eti, salata ve sos",
+      "categoryId": "lahmacun",
+      "price": 9,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 3002
+    },
+    {
+      "id": "pide--pide-50",
+      "no": "50",
+      "name": "Pide",
+      "nameTr": "",
+      "description": "Weichkäse",
+      "descriptionTr": "Yumuşak peynir",
+      "categoryId": "pide",
+      "price": 7,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 4000
+    },
+    {
+      "id": "pide--pide-51",
+      "no": "51",
+      "name": "Pide",
+      "nameTr": "",
+      "description": "Weichkäse und Spinat",
+      "descriptionTr": "Yumuşak peynir ve ıspanak",
+      "categoryId": "pide",
+      "price": 8,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 4001
+    },
+    {
+      "id": "pide--pide-52",
+      "no": "52",
+      "name": "Pide",
+      "nameTr": "",
+      "description": "Sucuk und Ei",
+      "descriptionTr": "Sucuk ve yumurta",
+      "categoryId": "pide",
+      "price": 8.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 4002
+    },
+    {
+      "id": "pide--pide-53",
+      "no": "53",
+      "name": "Pide",
+      "nameTr": "",
+      "description": "Drehspießfleisch",
+      "descriptionTr": "Döner eti",
+      "categoryId": "pide",
+      "price": 8.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 4003
+    },
+    {
+      "id": "pide--pide-vegetarisch-54",
+      "no": "54",
+      "name": "Pide vegetarisch",
+      "nameTr": "Vejetaryen Pide",
+      "description": "Spinat, Paprika, Zwiebeln, Champignons",
+      "descriptionTr": "Ispanak, biber, soğan, mantar",
+      "categoryId": "pide",
+      "price": 8.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 4004
+    },
+    {
+      "id": "pide--pide-55",
+      "no": "55",
+      "name": "Pide",
+      "nameTr": "",
+      "description": "Hackfleisch",
+      "descriptionTr": "Kıyma",
+      "categoryId": "pide",
+      "price": 8.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 4005
+    },
+    {
+      "id": "calzone--calzone-57",
+      "no": "57",
+      "name": "Calzone",
+      "nameTr": "",
+      "description": "Salami, Schinken und Käse",
+      "descriptionTr": "Salam, jambon ve peynir",
+      "categoryId": "calzone",
+      "price": 8,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 5000
+    },
+    {
+      "id": "calzone--calzone-58",
+      "no": "58",
+      "name": "Calzone",
+      "nameTr": "",
+      "description": "Champignons, Salami, Schinken und Käse",
+      "descriptionTr": "Mantar, salam, jambon ve peynir",
+      "categoryId": "calzone",
+      "price": 8.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 5001
+    },
+    {
+      "id": "calzone--calzone-vegetarisch-gefuellt-59",
+      "no": "59",
+      "name": "Calzone Vegetarisch gefüllt",
+      "nameTr": "Vejetaryen Dolgulu Calzone",
+      "description": "Champignons, frische Tomaten, Paprika und Zwiebeln",
+      "descriptionTr": "Mantar, taze domates, biber ve soğan",
+      "categoryId": "calzone",
+      "price": 8.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 5002
+    },
+    {
+      "id": "calzone--calzone-drehspiessfleisch-gefuellt-60",
+      "no": "60",
+      "name": "Calzone Drehspießfleisch gefüllt",
+      "nameTr": "Döner Etli Calzone",
+      "description": "Drehspieß, frische Tomaten und Zwiebeln",
+      "descriptionTr": "Döner, taze domates ve soğan",
+      "categoryId": "calzone",
+      "price": 9,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 5003
+    },
+    {
+      "id": "pizza--pizza-margherita-80",
+      "no": "80",
+      "name": "Pizza Margherita",
+      "nameTr": "",
+      "description": "",
+      "descriptionTr": "",
+      "categoryId": "pizza",
+      "price": 6,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 6
+        },
+        {
+          "size": "32 CM",
+          "price": 7
+        }
+      ],
+      "sortOrder": 6000
+    },
+    {
+      "id": "pizza--pizza-salami-81",
+      "no": "81",
+      "name": "Pizza Salami",
+      "nameTr": "",
+      "description": "Salami",
+      "descriptionTr": "Salam",
+      "categoryId": "pizza",
+      "price": 7,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 7
+        },
+        {
+          "size": "32 CM",
+          "price": 8
+        }
+      ],
+      "sortOrder": 6001
+    },
+    {
+      "id": "pizza--pizza-prosciutto-82",
+      "no": "82",
+      "name": "Pizza Prosciutto",
+      "nameTr": "",
+      "description": "Schinken",
+      "descriptionTr": "Jambon",
+      "categoryId": "pizza",
+      "price": 7.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 7.5
+        },
+        {
+          "size": "32 CM",
+          "price": 8
+        }
+      ],
+      "sortOrder": 6002
+    },
+    {
+      "id": "pizza--pizza-funghi-83",
+      "no": "83",
+      "name": "Pizza Funghi",
+      "nameTr": "",
+      "description": "Champignons",
+      "descriptionTr": "Mantar",
+      "categoryId": "pizza",
+      "price": 7,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 7
+        },
+        {
+          "size": "32 CM",
+          "price": 8
+        }
+      ],
+      "sortOrder": 6003
+    },
+    {
+      "id": "pizza--pizza-raffaele-84",
+      "no": "84",
+      "name": "Pizza Raffaele",
+      "nameTr": "",
+      "description": "Salami, Paprika, Zwiebeln",
+      "descriptionTr": "Salam, biber, soğan",
+      "categoryId": "pizza",
+      "price": 7.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 7.5
+        },
+        {
+          "size": "32 CM",
+          "price": 8.5
+        }
+      ],
+      "sortOrder": 6004
+    },
+    {
+      "id": "pizza--pizza-milano-85",
+      "no": "85",
+      "name": "Pizza Milano",
+      "nameTr": "",
+      "description": "Schinken, Champignons",
+      "descriptionTr": "Jambon, mantar",
+      "categoryId": "pizza",
+      "price": 7.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 7.5
+        },
+        {
+          "size": "32 CM",
+          "price": 8.5
+        }
+      ],
+      "sortOrder": 6005
+    },
+    {
+      "id": "pizza--pizza-tonno-86",
+      "no": "86",
+      "name": "Pizza Tonno",
+      "nameTr": "",
+      "description": "Thunfisch, Zwiebeln",
+      "descriptionTr": "Ton balığı, soğan",
+      "categoryId": "pizza",
+      "price": 7.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 7.5
+        },
+        {
+          "size": "32 CM",
+          "price": 8.5
+        }
+      ],
+      "sortOrder": 6006
+    },
+    {
+      "id": "pizza--pizza-hawaii-87",
+      "no": "87",
+      "name": "Pizza Hawaii",
+      "nameTr": "",
+      "description": "Schinken, Ananas",
+      "descriptionTr": "Jambon, ananas",
+      "categoryId": "pizza",
+      "price": 7.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 7.5
+        },
+        {
+          "size": "32 CM",
+          "price": 8.5
+        }
+      ],
+      "sortOrder": 6007
+    },
+    {
+      "id": "pizza--pizza-hazal-88",
+      "no": "88",
+      "name": "Pizza Hazal",
+      "nameTr": "",
+      "description": "Salami, Schinken",
+      "descriptionTr": "Salam, jambon",
+      "categoryId": "pizza",
+      "price": 7.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 7.5
+        },
+        {
+          "size": "32 CM",
+          "price": 9
+        }
+      ],
+      "sortOrder": 6008
+    },
+    {
+      "id": "pizza--pizza-quattro-formaggi-89",
+      "no": "89",
+      "name": "Pizza Quattro Formaggi",
+      "nameTr": "",
+      "description": "Edamer, Mozzarella, Gorgonzola, Parmesan",
+      "descriptionTr": "Edamer, mozzarella, gorgonzola, parmesan",
+      "categoryId": "pizza",
+      "price": 8,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 8
+        },
+        {
+          "size": "32 CM",
+          "price": 9.5
+        }
+      ],
+      "sortOrder": 6009
+    },
+    {
+      "id": "pizza--pizza-speciale-90",
+      "no": "90",
+      "name": "Pizza Speciale",
+      "nameTr": "",
+      "description": "Salami, Schinken, Champignons, Ei",
+      "descriptionTr": "Salam, jambon, mantar, yumurta",
+      "categoryId": "pizza",
+      "price": 7.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 7.5
+        },
+        {
+          "size": "32 CM",
+          "price": 9
+        }
+      ],
+      "sortOrder": 6010
+    },
+    {
+      "id": "pizza--pizza-vegetaria-91",
+      "no": "91",
+      "name": "Pizza Vegetaria",
+      "nameTr": "",
+      "description": "Champignons, Käse, Zwiebeln, Paprika, Oliven",
+      "descriptionTr": "Mantar, peynir, soğan, biber, zeytin",
+      "categoryId": "pizza",
+      "price": 7,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 7
+        },
+        {
+          "size": "32 CM",
+          "price": 9
+        }
+      ],
+      "sortOrder": 6011
+    },
+    {
+      "id": "pizza--pizza-diavolo-92",
+      "no": "92",
+      "name": "Pizza Diavolo",
+      "nameTr": "",
+      "description": "Peperoni, Sauce Hollandaise, Zwiebeln",
+      "descriptionTr": "Acı biber, hollandez sos, soğan",
+      "categoryId": "pizza",
+      "price": 7.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 7.5
+        },
+        {
+          "size": "32 CM",
+          "price": 9
+        }
+      ],
+      "sortOrder": 6012
+    },
+    {
+      "id": "pizza--pizza-pikanta-93",
+      "no": "93",
+      "name": "Pizza Pikanta",
+      "nameTr": "",
+      "description": "Paprika, Peperoni, Zwiebeln",
+      "descriptionTr": "Biber, acı biber, soğan",
+      "categoryId": "pizza",
+      "price": 7.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 7.5
+        },
+        {
+          "size": "32 CM",
+          "price": 8.5
+        }
+      ],
+      "sortOrder": 6013
+    },
+    {
+      "id": "pizza--pizza-fantasia-94",
+      "no": "94",
+      "name": "Pizza Fantasia",
+      "nameTr": "",
+      "description": "Käse, Champignons, Sauce Hollandaise, Zwiebeln",
+      "descriptionTr": "Peynir, mantar, hollandez sos, soğan",
+      "categoryId": "pizza",
+      "price": 8,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 8
+        },
+        {
+          "size": "32 CM",
+          "price": 8.5
+        }
+      ],
+      "sortOrder": 6014
+    },
+    {
+      "id": "pizza--pizza-mama-mia-95",
+      "no": "95",
+      "name": "Pizza Mama Mia",
+      "nameTr": "",
+      "description": "Salami, Champignons, Käse, Peperoni",
+      "descriptionTr": "Salam, mantar, peynir, acı biber",
+      "categoryId": "pizza",
+      "price": 7.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 7.5
+        },
+        {
+          "size": "32 CM",
+          "price": 9
+        }
+      ],
+      "sortOrder": 6015
+    },
+    {
+      "id": "pizza--pizza-taksim-96",
+      "no": "96",
+      "name": "Pizza Taksim",
+      "nameTr": "",
+      "description": "Sucuk, Ei",
+      "descriptionTr": "Sucuk, yumurta",
+      "categoryId": "pizza",
+      "price": 8,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 8
+        },
+        {
+          "size": "32 CM",
+          "price": 9
+        }
+      ],
+      "sortOrder": 6016
+    },
+    {
+      "id": "pizza--pizza-vier-jahreszeiten-97",
+      "no": "97",
+      "name": "Pizza vier Jahreszeiten",
+      "nameTr": "Pizza Dört Mevsim",
+      "description": "Champignons, Artischocken, Schinken, Salami",
+      "descriptionTr": "Mantar, enginar, jambon, salam",
+      "categoryId": "pizza",
+      "price": 8.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 8.5
+        },
+        {
+          "size": "32 CM",
+          "price": 9.5
+        }
+      ],
+      "sortOrder": 6017
+    },
+    {
+      "id": "pizza--pizza-kebap-98",
+      "no": "98",
+      "name": "Pizza Kebap",
+      "nameTr": "",
+      "description": "Drehspießfleisch",
+      "descriptionTr": "Döner eti",
+      "categoryId": "pizza",
+      "price": 7.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 7.5
+        },
+        {
+          "size": "32 CM",
+          "price": 9
+        }
+      ],
+      "sortOrder": 6018
+    },
+    {
+      "id": "pizza--pizza-americana-99",
+      "no": "99",
+      "name": "Pizza Americana",
+      "nameTr": "",
+      "description": "Pommes, Wurst, Käse",
+      "descriptionTr": "Patates kızartması, sosis, peynir",
+      "categoryId": "pizza",
+      "price": 8.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 8.5
+        },
+        {
+          "size": "32 CM",
+          "price": 9
+        }
+      ],
+      "sortOrder": 6019
+    },
+    {
+      "id": "pizza--pizza-chef-100",
+      "no": "100",
+      "name": "Pizza Chef",
+      "nameTr": "",
+      "description": "Champignons, frische Tomaten, Drehspießfleisch, Zwiebeln",
+      "descriptionTr": "Mantar, taze domates, döner eti, soğan",
+      "categoryId": "pizza",
+      "price": 7.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 7.5
+        },
+        {
+          "size": "32 CM",
+          "price": 9.5
+        }
+      ],
+      "sortOrder": 6020
+    },
+    {
+      "id": "pizza--pizza-spezial-101",
+      "no": "101",
+      "name": "Pizza Spezial",
+      "nameTr": "",
+      "description": "Champignons, Schinken, Artischocken, Peperoni, Knoblauch, Zwiebeln",
+      "descriptionTr": "Mantar, jambon, enginar, acı biber, sarımsak, soğan",
+      "categoryId": "pizza",
+      "price": 8,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 8
+        },
+        {
+          "size": "32 CM",
+          "price": 9.5
+        }
+      ],
+      "sortOrder": 6021
+    },
+    {
+      "id": "pizza--pizza-sucuk-102",
+      "no": "102",
+      "name": "Pizza Sucuk",
+      "nameTr": "",
+      "description": "Sucuk",
+      "descriptionTr": "Sucuk",
+      "categoryId": "pizza",
+      "price": 7.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 7.5
+        },
+        {
+          "size": "32 CM",
+          "price": 8.5
+        }
+      ],
+      "sortOrder": 6022
+    },
+    {
+      "id": "pizza--pizza-mozzarella-103",
+      "no": "103",
+      "name": "Pizza Mozzarella",
+      "nameTr": "",
+      "description": "Frische Tomaten",
+      "descriptionTr": "Taze domates",
+      "categoryId": "pizza",
+      "price": 7.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "28 CM",
+          "price": 7.5
+        },
+        {
+          "size": "32 CM",
+          "price": 9
+        }
+      ],
+      "sortOrder": 6023
+    },
+    {
+      "id": "salat--gemischter-salat-110",
+      "no": "110",
+      "name": "Gemischter Salat",
+      "nameTr": "Karışık Salata",
+      "description": "Eisbergsalat, Weißkraut, Rotkraut, Tomaten, Zwiebeln, Mais und Soße",
+      "descriptionTr": "Aysberg marul, beyaz lahana, kırmızı lahana, domates, soğan, mısır ve sos",
+      "categoryId": "salat",
+      "price": 8,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 7000
+    },
+    {
+      "id": "salat--bauern-salat-111",
+      "no": "111",
+      "name": "Bauern Salat",
+      "nameTr": "Köylü Salatası",
+      "description": "Eisbergsalat, Weißkraut, Rotkraut, Tomaten, Zwiebeln, Gurken, Extra Käse und Soße",
+      "descriptionTr": "Aysberg marul, beyaz lahana, kırmızı lahana, domates, soğan, salatalık, ekstra peynir ve sos",
+      "categoryId": "salat",
+      "price": 8.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 7001
+    },
+    {
+      "id": "salat--thunfisch-salat-112",
+      "no": "112",
+      "name": "Thunfisch Salat",
+      "nameTr": "Ton Balıklı Salata",
+      "description": "Eisbergsalat, Weißkraut, Rotkraut, Tomaten, Zwiebeln, Gurken, Thunfisch und Soße",
+      "descriptionTr": "Aysberg marul, beyaz lahana, kırmızı lahana, domates, soğan, salatalık, ton balığı ve sos",
+      "categoryId": "salat",
+      "price": 8.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 7002
+    },
+    {
+      "id": "salat--krautsalat-113",
+      "no": "113",
+      "name": "Krautsalat",
+      "nameTr": "Lahana Salatası",
+      "description": "Weißkraut, Rotkraut und Soße",
+      "descriptionTr": "Beyaz lahana, kırmızı lahana ve sos",
+      "categoryId": "salat",
+      "price": 7,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 7003
+    },
+    {
+      "id": "salat--sami-s-salat-114",
+      "no": "114",
+      "name": "Sami's Salat",
+      "nameTr": "Sami's Salatası",
+      "description": "Drehspießfleisch, Eisbergsalat, Weißkraut, Rotkraut, Tomaten, Zwiebeln, Gurken und Soße",
+      "descriptionTr": "Döner eti, aysberg marul, beyaz lahana, kırmızı lahana, domates, soğan, salatalık ve sos",
+      "categoryId": "salat",
+      "price": 9,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [],
+      "sortOrder": 7004
+    },
+    {
+      "id": "getraenke--ayran-1",
+      "no": "",
+      "name": "Ayran",
+      "nameTr": "",
+      "description": "",
+      "descriptionTr": "",
       "categoryId": "getraenke",
       "price": 1.5,
       "discountPrice": null,
       "image": null,
       "active": true,
       "inStock": true,
+      "showOnHome": true,
       "variants": [
         {
-          "size": "",
+          "size": "0,25",
           "price": 1.5
         }
       ],
-      "sortOrder": 302
+      "sortOrder": 8000
     },
     {
-      "id": "getraenke--uludag-gazoz",
-      "name": "Uludag Gazoz",
+      "id": "getraenke--coca-cola-2",
+      "no": "",
+      "name": "Coca Cola",
+      "nameTr": "",
       "description": "",
+      "descriptionTr": "",
       "categoryId": "getraenke",
       "price": 2.5,
       "discountPrice": null,
       "image": null,
       "active": true,
       "inStock": true,
+      "showOnHome": true,
       "variants": [
         {
-          "size": "0,5 l",
+          "size": "0,33",
           "price": 2.5
+        },
+        {
+          "size": "0,50",
+          "price": 3
         }
       ],
-      "sortOrder": 303
+      "sortOrder": 8001
     },
     {
-      "id": "getraenke--redbull",
-      "name": "Redbull",
+      "id": "getraenke--cola-light-3",
+      "no": "",
+      "name": "Cola light",
+      "nameTr": "",
       "description": "",
+      "descriptionTr": "",
       "categoryId": "getraenke",
-      "price": 2.6,
+      "price": 2.5,
       "discountPrice": null,
       "image": null,
       "active": true,
       "inStock": true,
+      "showOnHome": true,
       "variants": [
         {
-          "size": "0,25 l",
-          "price": 2.6
+          "size": "0,33",
+          "price": 2.5
+        },
+        {
+          "size": "0,50",
+          "price": 3
         }
       ],
-      "sortOrder": 304
+      "sortOrder": 8002
     },
     {
-      "id": "getraenke--heissgetraenke",
-      "name": "Alle Heißgetränke",
+      "id": "getraenke--mezzo-mix-4",
+      "no": "",
+      "name": "Mezzo Mix",
+      "nameTr": "",
       "description": "",
+      "descriptionTr": "",
       "categoryId": "getraenke",
-      "price": 2,
+      "price": 2.5,
       "discountPrice": null,
       "image": null,
       "active": true,
       "inStock": true,
+      "showOnHome": true,
       "variants": [
         {
-          "size": "",
-          "price": 2
+          "size": "0,33",
+          "price": 2.5
+        },
+        {
+          "size": "0,50",
+          "price": 3
         }
       ],
-      "sortOrder": 305
+      "sortOrder": 8003
+    },
+    {
+      "id": "getraenke--fanta-5",
+      "no": "",
+      "name": "Fanta",
+      "nameTr": "",
+      "description": "",
+      "descriptionTr": "",
+      "categoryId": "getraenke",
+      "price": 2.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "0,33",
+          "price": 2.5
+        },
+        {
+          "size": "0,50",
+          "price": 3
+        }
+      ],
+      "sortOrder": 8004
+    },
+    {
+      "id": "getraenke--wasser-6",
+      "no": "",
+      "name": "Wasser",
+      "nameTr": "Su",
+      "description": "",
+      "descriptionTr": "",
+      "categoryId": "getraenke",
+      "price": 2.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "0,33",
+          "price": 2.5
+        },
+        {
+          "size": "0,50",
+          "price": 3
+        }
+      ],
+      "sortOrder": 8005
+    },
+    {
+      "id": "getraenke--uludag-7",
+      "no": "",
+      "name": "Uludag",
+      "nameTr": "",
+      "description": "",
+      "descriptionTr": "",
+      "categoryId": "getraenke",
+      "price": 2.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "0,33",
+          "price": 2.5
+        },
+        {
+          "size": "0,50",
+          "price": 3
+        }
+      ],
+      "sortOrder": 8006
+    },
+    {
+      "id": "getraenke--sprite-8",
+      "no": "",
+      "name": "Sprite",
+      "nameTr": "",
+      "description": "",
+      "descriptionTr": "",
+      "categoryId": "getraenke",
+      "price": 2.5,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "0,33",
+          "price": 2.5
+        },
+        {
+          "size": "0,50",
+          "price": 3
+        }
+      ],
+      "sortOrder": 8007
+    },
+    {
+      "id": "getraenke--red-bull-9",
+      "no": "",
+      "name": "Red Bull",
+      "nameTr": "",
+      "description": "",
+      "descriptionTr": "",
+      "categoryId": "getraenke",
+      "price": 3,
+      "discountPrice": null,
+      "image": null,
+      "active": true,
+      "inStock": true,
+      "showOnHome": true,
+      "variants": [
+        {
+          "size": "0,33",
+          "price": 3
+        }
+      ],
+      "sortOrder": 8008
     }
   ]
 }

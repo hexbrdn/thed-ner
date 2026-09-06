@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useCart } from "@/lib/cart";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
@@ -16,13 +17,15 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Bölüm bağlantıları "/#..." biçiminde: menü sayfasından tıklandığında da
+  // ana sayfanın doğru bölümüne gider. Ürünler artık kendi sayfasında olduğu
+  // için "Speisekarte" bir route'a bakar.
   const LINKS = [
-    { href: "#filialen", label: t.nav.filialen },
-    { href: "#produkte", label: t.nav.produkte },
-    { href: "#unternehmen", label: t.nav.unternehmen },
-    { href: "#franchise", label: t.nav.franchise },
-    { href: "#builder", label: t.nav.buildYourOwn },
-    { href: "#menu", label: t.nav.menu },
+    { href: "/speisekarte", label: t.nav.menu, route: true },
+    { href: "/#filialen", label: t.nav.filialen },
+    { href: "/#unternehmen", label: t.nav.unternehmen },
+    { href: "/#franchise", label: t.nav.franchise },
+    { href: "/#builder", label: t.nav.buildYourOwn },
   ];
 
   return (
@@ -37,17 +40,22 @@ export default function Navbar() {
       </div>
 
       <nav className="max-w-[1400px] mx-auto flex items-center justify-between px-6 md:px-10 py-4">
-        <a href="#top" className="focus-ring font-display font-extrabold text-lg md:text-xl tracking-tight text-bone shrink-0">
+        <Link href="/" className="focus-ring font-display font-extrabold text-lg md:text-xl tracking-tight text-bone shrink-0">
           SAMİ´S <span className="text-amber">//</span> DÖNER
-        </a>
+        </Link>
 
         {/* Desktop Links */}
         <ul className="hidden lg:flex items-center gap-6 tag text-smoke">
           {LINKS.map((l) => (
             <li key={l.href}>
-              <a href={l.href} className="focus-ring hover:text-amber transition-colors">
+              <Link
+                href={l.href}
+                className={`focus-ring transition-colors ${
+                  l.route ? "text-amber hover:text-bone" : "hover:text-amber"
+                }`}
+              >
                 {l.label}
-              </a>
+              </Link>
             </li>
           ))}
         </ul>
@@ -106,13 +114,15 @@ export default function Navbar() {
           <ul className="space-y-3 tag text-smoke">
             {LINKS.map((l) => (
               <li key={l.href}>
-                <a
+                <Link
                   href={l.href}
                   onClick={() => setMobileOpen(false)}
-                  className="block text-bone hover:text-amber py-1 transition-colors text-sm"
+                  className={`block py-1 transition-colors text-sm ${
+                    l.route ? "text-amber font-bold" : "text-bone hover:text-amber"
+                  }`}
                 >
                   {l.label}
-                </a>
+                </Link>
               </li>
             ))}
           </ul>

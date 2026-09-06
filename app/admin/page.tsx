@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { getCatalog, getStats } from "@/lib/admin/store";
-import { formatPrice } from "@/lib/admin/types";
+import { getCatalog, getStats, isVisible } from "@/lib/admin/store";
 
 export const dynamic = "force-dynamic";
 
@@ -9,11 +8,11 @@ export default async function AdminDashboard() {
 
   const cards = [
     { label: "Toplam ürün", value: stats.totalProducts, tone: "text-bone" },
-    { label: "Aktif ürün", value: stats.activeProducts, tone: "text-herb" },
+    { label: "Menüde görünen", value: stats.visibleProducts, tone: "text-herb" },
     { label: "Pasif ürün", value: stats.passiveProducts, tone: "text-smoke" },
-    { label: "Kategori", value: stats.categories, tone: "text-amber" },
     { label: "Tükenen ürün", value: stats.outOfStock, tone: "text-flame" },
-    { label: "İndirimli ürün", value: stats.discounted, tone: "text-steel" },
+    { label: "Menüde gizli", value: stats.hiddenFromMenu, tone: "text-amber" },
+    { label: "Kategori", value: stats.categories, tone: "text-steel" },
   ];
 
   const byCategory = catalog.categories
@@ -24,11 +23,12 @@ export default async function AdminDashboard() {
       return {
         ...cat,
         total: products.length,
-        active: products.filter((p) => p.active).length,
+        active: products.filter(isVisible).length,
       };
     });
 
-  const passive = catalog.products.filter((p) => !p.active);
+  // Menüde çıkmayan her ürün: pasif, tükenmiş ya da elle gizlenmiş olabilir.
+  const passive = catalog.products.filter((p) => !isVisible(p));
 
   return (
     <div className="max-w-[1100px]">
@@ -64,7 +64,7 @@ export default async function AdminDashboard() {
               <li key={cat.id} className="flex items-center justify-between gap-4 bg-char px-5 py-4">
                 <span className="text-sm text-bone">{cat.name}</span>
                 <span className="tag text-smoke tabular-nums whitespace-nowrap">
-                  {cat.active} aktif / {cat.total}
+                  {cat.active} görünür / {cat.total}
                 </span>
               </li>
             ))}
@@ -87,8 +87,8 @@ export default async function AdminDashboard() {
               {passive.slice(0, 8).map((p) => (
                 <li key={p.id} className="flex items-center justify-between gap-4 bg-char px-5 py-4">
                   <span className="text-sm text-bone truncate">{p.name}</span>
-                  <span className="tag text-smoke tabular-nums whitespace-nowrap">
-                    {formatPrice(p.price)}
+                  <span className="tag text-smoke whitespace-nowrap">
+                    {!p.active ? "pasif" : !p.inStock ? "tükendi" : "menüde gizli"}
                   </span>
                 </li>
               ))}

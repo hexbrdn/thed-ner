@@ -1,8 +1,11 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { MENU_CATEGORIES } from "@/data/menu";
+import { SPEISEKARTE, type MenuSection } from "@/data/speisekarte";
 import {
+  CATALOG_VERSION,
+  formatPrice,
   parsePrice,
+  slugify,
   type Catalog,
   type Category,
   type Product,
@@ -30,46 +33,103 @@ const STORE_FILE = path.join(STORE_DIR, "catalog.json");
 let writeChain: Promise<unknown> = Promise.resolve();
 
 function seed(): Catalog {
-  const categories: Category[] = MENU_CATEGORIES.map((cat, i) => ({
-    id: cat.id,
-    name: cat.title,
+  const categories: Category[] = SPEISEKARTE.map((section, i) => ({
+    id: section.id,
+    name: section.title,
+    nameTr: section.titleTr ?? "",
+    note: section.note ?? "",
+    noteTr: section.noteTr ?? "",
     sortOrder: i,
   }));
 
-  const products: Product[] = MENU_CATEGORIES.flatMap((cat, ci) =>
-    cat.items.map((item, ii) => {
-      const variants = item.variants
+  const products: Product[] = SPEISEKARTE.flatMap((section, ci) =>
+    section.items.map((item, ii) => {
+      // Tek fiyatlı üründe `price`, çok boylu üründe `variants` dolu gelir.
+      const variants = (item.variants ?? [])
         .map((v) => ({ size: v.size, price: parsePrice(v.price) }))
         .filter((v): v is { size: string; price: number } => v.price !== null);
 
+      const base = item.price ? parsePrice(item.price) : null;
+
       return {
-        // aynı ürün id'si iki kategoride geçebiliyor (ör. lahmacun) → kategoriyle nitele
-        id: `${cat.id}--${item.id}`,
+        // Aynı ad birden çok kategoride/satırda geçebiliyor (Pide, Lahmacun) →
+        // numara ve sırayla nitele ki id benzersiz kalsın.
+        id: `${section.id}--${slugify(item.name) || "urun"}-${item.no ?? ii + 1}`,
+        no: item.no ?? "",
         name: item.name,
-        description: item.desc,
-        categoryId: cat.id,
-        price: variants[0]?.price ?? 0,
+        nameTr: item.nameTr ?? "",
+        description: item.desc ?? "",
+        descriptionTr: item.descTr ?? "",
+        categoryId: section.id,
+        price: base ?? variants[0]?.price ?? 0,
         discountPrice: null,
-        image: item.image ?? null,
+        image: null,
         active: true,
         inStock: true,
+        showOnHome: true,
         variants,
-        sortOrder: ci * 100 + ii,
-      };
+        sortOrder: ci * 1000 + ii,
+      } satisfies Product;
     })
   );
 
-  return { categories, products };
+  return { version: CATALOG_VERSION, categories, products };
+}
+
+/**
+ * Diskten okunan kaydı güncel şemaya tamamlar.
+ *
+ * Elle düzenlenmiş ya da eski sürümden kalmış kayıtlarda eksik alan olabilir;
+ * burada varsayılanları verilir, böylece UI hiçbir zaman `undefined` görmez.
+ */
+function normalize(catalog: Catalog): Catalog {
+  const categories = (catalog.categories as Partial<Category>[]).map((c) => ({
+    id: String(c.id),
+    name: c.name ?? "",
+    nameTr: c.nameTr ?? "",
+    note: c.note ?? "",
+    noteTr: c.noteTr ?? "",
+    sortOrder: c.sortOrder ?? 0,
+  }));
+
+  const products = (catalog.products as Partial<Product>[]).map((p) => ({
+    id: String(p.id),
+    no: p.no ?? "",
+    name: p.name ?? "",
+    nameTr: p.nameTr ?? "",
+    description: p.description ?? "",
+    descriptionTr: p.descriptionTr ?? "",
+    categoryId: p.categoryId ?? "",
+    price: p.price ?? 0,
+    discountPrice: p.discountPrice ?? null,
+    image: p.image ?? null,
+    active: p.active ?? true,
+    inStock: p.inStock ?? true,
+    // Eski kayıtlarda alan yok: varsayılan görünür olsun ki ürün kaybolmasın.
+    showOnHome: p.showOnHome ?? true,
+    variants: p.variants ?? [],
+    sortOrder: p.sortOrder ?? 0,
+  }));
+
+  return { version: CATALOG_VERSION, categories, products };
 }
 
 async function readCatalog(): Promise<Catalog> {
   try {
     const raw = await fs.readFile(STORE_FILE, "utf8");
     const parsed = JSON.parse(raw) as Partial<Catalog>;
-    if (Array.isArray(parsed.categories) && Array.isArray(parsed.products)) {
-      return { categories: parsed.categories, products: parsed.products };
+    if (!Array.isArray(parsed.categories) || !Array.isArray(parsed.products)) {
+      throw new Error("catalog.json beklenen şekilde değil");
     }
-    throw new Error("catalog.json beklenen şekilde değil");
+    // Eski şema (ör. demo menüsünden kurulmuş v1 deposu): kaynaktan yeniden kur.
+    if ((parsed.version ?? 1) !== CATALOG_VERSION) {
+      throw new Error("catalog.json eski sürüm");
+    }
+    return normalize({
+      version: CATALOG_VERSION,
+      categories: parsed.categories,
+      products: parsed.products,
+    });
   } catch {
     // dosya yok veya bozuk: mevcut menü verisinden yeniden kur.
     // Kalıcılaştırma en iyi çaba: salt okunur ortamda yazma başarısız olsa da
@@ -124,7 +184,15 @@ export async function getCatalog(): Promise<Catalog> {
   return readCatalog();
 }
 
-/** Müşteri tarafı: yalnızca aktif ürünler, kategori sırasına göre gruplanmış. */
+/** Ürün müşteriye gösterilir mi: üç anahtarın da açık olması gerekir. */
+export function isVisible(product: Product): boolean {
+  return product.active && product.inStock && product.showOnHome;
+}
+
+/**
+ * Müşteri tarafı: yalnızca gösterilebilir ürünler, kategori sırasına göre
+ * gruplanmış. Hiç ürünü kalmayan kategori listeye girmez.
+ */
 export async function getPublicMenu(): Promise<PublicCategory[]> {
   const { categories, products } = await readCatalog();
   return categories
@@ -133,10 +201,48 @@ export async function getPublicMenu(): Promise<PublicCategory[]> {
     .map((cat) => ({
       ...cat,
       products: products
-        .filter((p) => p.categoryId === cat.id && p.active)
+        .filter((p) => p.categoryId === cat.id && isVisible(p))
         .sort((a, b) => a.sortOrder - b.sortOrder),
     }))
     .filter((cat) => cat.products.length > 0);
+}
+
+/**
+ * Kartanın (`/speisekarte`) beklediği görünüm.
+ *
+ * `data/speisekarte.ts` ile aynı şekli üretir; böylece MenuGrid tarafında
+ * gösterim mantığı değişmeden veri kaynağı depoya taşınmış olur.
+ */
+export async function getMenuSections(): Promise<MenuSection[]> {
+  const categories = await getPublicMenu();
+  return categories.map((cat) => ({
+    id: cat.id,
+    title: cat.name,
+    titleTr: cat.nameTr || undefined,
+    note: cat.note || undefined,
+    noteTr: cat.noteTr || undefined,
+    items: cat.products.map((p) => ({
+      no: p.no || undefined,
+      name: p.name,
+      nameTr: p.nameTr || undefined,
+      desc: p.description || undefined,
+      descTr: p.descriptionTr || undefined,
+      image: p.image ?? undefined,
+      // Varyasyonlu üründe satırda tek fiyat değil, boy listesi gösterilir.
+      price:
+        p.variants.length > 0
+          ? undefined
+          : formatPrice(p.discountPrice ?? p.price),
+      oldPrice:
+        p.variants.length > 0 || p.discountPrice === null
+          ? undefined
+          : formatPrice(p.price),
+      variants:
+        p.variants.length > 0
+          ? p.variants.map((v) => ({ size: v.size, price: formatPrice(v.price) }))
+          : undefined,
+    })),
+  }));
 }
 
 export async function getStats() {
@@ -146,6 +252,8 @@ export async function getStats() {
     activeProducts: products.filter((p) => p.active).length,
     passiveProducts: products.filter((p) => !p.active).length,
     outOfStock: products.filter((p) => !p.inStock).length,
+    hiddenFromMenu: products.filter((p) => p.active && !p.showOnHome).length,
+    visibleProducts: products.filter(isVisible).length,
     discounted: products.filter((p) => p.discountPrice !== null).length,
     categories: categories.length,
   };
@@ -154,6 +262,9 @@ export async function getStats() {
 /* ------------------------------------------------------------------ yazma */
 
 export type ProductInput = Omit<Product, "id" | "sortOrder">;
+
+/** Güncellemede sıra da değiştirilebilir; oluşturmada sıra otomatik verilir. */
+export type ProductPatch = Partial<ProductInput & Pick<Product, "sortOrder">>;
 
 export async function createProduct(
   input: ProductInput & { id: string }
@@ -173,7 +284,7 @@ export async function createProduct(
 
 export async function updateProduct(
   id: string,
-  patch: Partial<ProductInput>
+  patch: ProductPatch
 ): Promise<Product | null> {
   return transaction(async (catalog) => {
     const index = catalog.products.findIndex((p) => p.id === id);
@@ -202,7 +313,14 @@ export async function createCategory(name: string, id: string): Promise<Category
     while (catalog.categories.some((c) => c.id === unique)) unique = `${id}-${n++}`;
 
     const maxSort = catalog.categories.reduce((m, c) => Math.max(m, c.sortOrder), 0);
-    const category: Category = { id: unique, name, sortOrder: maxSort + 1 };
+    const category: Category = {
+      id: unique,
+      name,
+      nameTr: "",
+      note: "",
+      noteTr: "",
+      sortOrder: maxSort + 1,
+    };
     catalog.categories.push(category);
     await writeCatalog(catalog);
     return category;

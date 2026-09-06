@@ -37,14 +37,18 @@ export async function POST(request: Request) {
 
   const product = await storeWrite(() => createProduct({
     id: `${value.categoryId}--${slugify(value.name) || "urun"}`,
+    no: value.no ?? "",
     name: value.name,
+    nameTr: value.nameTr ?? "",
     description: value.description ?? "",
+    descriptionTr: value.descriptionTr ?? "",
     categoryId: value.categoryId,
     price: value.price,
     discountPrice: value.discountPrice ?? null,
     image: value.image ?? null,
     active: value.active ?? true,
     inStock: value.inStock ?? true,
+    showOnHome: value.showOnHome ?? true,
     variants: value.variants ?? [],
   }));
   if (product instanceof NextResponse) return product;
