@@ -290,7 +290,7 @@ export default function AssemblyLog() {
         <div ref={headerBlock} className="pt-28 md:pt-32 flex items-start justify-between gap-6">
           <div>
             <p className="tag text-flame mb-3">{t.assembly.tag}</p>
-            <h2 className="font-display font-extrabold text-[9vw] md:text-[3.4vw] leading-[0.95] text-bone">
+            <h2 className="section-title font-display font-extrabold text-bone">
               {t.assembly.title.split(" ")[0]}
               <br />
               {t.assembly.title.split(" ")[1] || t.assembly.title}
@@ -302,7 +302,7 @@ export default function AssemblyLog() {
             </p>
             <button
               onClick={() => {
-                unlockAudio();
+                void unlockAudio();
                 setSoundOn((v) => !v);
               }}
               aria-pressed={soundOn}

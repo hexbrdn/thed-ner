@@ -1,0 +1,643 @@
+// Sami's Döner — veri modeli.
+//
+// Üç kural bu şemanın omurgası:
+//
+//  1. Para her yerde **cent (Int)**. `Float` yok: 0.1 + 0.2 toplamı sipariş
+//     tutarında bir cent'lik sapmalara yol açar. Bkz. lib/money.ts.
+//  2. Sipariş satırı bir **kopyadır**, ürüne referans değil. Ürün adı, birim
+//     fiyatı ve KDV oranı sipariş anında dondurulur; panelden fiyat değişince
+//     geçmiş siparişler değişmez.
+//  3. Sipariş kayıtları **append-only**. Durum değişimi OrderEvent'e yazılır,
+//     satır güncellenmez, kayıt silinmez. (Buchungsbelege 8 yıl saklanır;
+//     DSGVO silme talebinde kişisel alanlar anonimleştirilir.)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Supabase iki ayrı bağlantı ister:
+//  - DATABASE_URL: havuzlanmış bağlantı (Transaction pooler, 6543 + pgbouncer=true).
+//    Uygulama bunu kullanır; serverless'ta her istek yeni bağlantı açmaz.
+//  - DIRECT_URL:   doğrudan bağlantı (5432). Yalnızca `prisma migrate` kullanır;
+//    şema göçü havuz üzerinden çalışmaz.
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/**
+ * ══════════════════════════════════════════════════════════════════ katalog
+ */
+
+model Category {
+  id        String    @id
+  name      String
+  nameTr    String    @default("")
+  note      String    @default("")
+  noteTr    String    @default("")
+  sortOrder Int       @default(0)
+  products  Product[]
+
+  @@index([sortOrder])
+}
+
+model Product {
+  id            String @id
+  /// Menüdeki sipariş numarası ("01", "80"). İçeceklerde yoktur.
+  no            String @default("")
+  name          String
+  /// Türkçe ad; boşsa müşteri tarafında Almanca `name` kullanılır.
+  nameTr        String @default("")
+  description   String @default("")
+  descriptionTr String @default("")
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  /// Varyasyonlu üründe ilk varyasyonun fiyatı; liste/sıralama için taban.
+  priceCents         Int
+  /// null = indirim yok. Set edilmişse müşteri tarafında üstü çizili gösterilir.
+  discountPriceCents Int?
+
+  image String?
+
+  /// Kaydı yayında mı. Pasifse müşteri tarafında hiç görünmez.
+  active     Boolean @default(true)
+  /// Gün içi stok durumu. Tükendiyse menüden düşer.
+  inStock    Boolean @default(true)
+  /// Aktif olsa bile menü/ana sayfa listesinde gösterilsin mi.
+  showOnHome Boolean @default(true)
+  /// "Öne çıkanlar" vitrininde gösterilsin mi. Ana sayfadaki ve karta
+  /// sayfasının üstündeki kısa liste bu bayrağa bakar; işaretli ürün yoksa
+  /// liste sıraya göre kendiliğinden doldurulur (bkz. getFeaturedProducts).
+  featured   Boolean @default(false)
+  sortOrder  Int     @default(0)
+
+  /// KDV oranı — **sabit değil, ürün başına**. Steueränderungsgesetz 2025
+  /// (§ 12 Abs. 2 Nr. 15 UStG) ile 01.01.2026'dan itibaren: tüm yemekler %7
+  /// (yerinde/paket/teslimat ayrımı kalktı), tüm içecekler %19. İstisna:
+  /// >=%75 inek sütü içeren içecekler ve musluk suyu %7.
+  vatRate Int @default(7)
+
+  /// LMIV Art. 14/44: zorunlu gıda bilgisi sipariş bağlayıcı hale gelmeden
+  /// ÖNCE verilmek zorunda. Açık satılan üründe (döner) de geçerli.
+  allergens             Allergen[]
+  /// ZZulV: katkı maddesi sınıfları yazılı bildirilmek zorunda;
+  /// "personele sorun" yeterli değil.
+  additives             Additive[]
+  /// Boş liste "bilgi girilmedi" ile "madde yok" arasında ayrım yapamaz.
+  /// Bu bayrak işletmecinin bilinçli "yok" beyanını kaydeder.
+  allergenInfoConfirmed Boolean    @default(false)
+
+  /// § 312g Abs. 2 BGB — çabuk bozulan hazır yemekte cayma hakkı istisnası.
+  /// İstisna DAR yorumlanır: kapalı şişe içecek bozulmaz, kapsam dışıdır.
+  isPerishable Boolean @default(true)
+
+  variants  Variant[]
+  lines     OrderLine[]
+  favorites Favorite[]
+
+  @@index([categoryId, sortOrder])
+}
+
+model Variant {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  /// "kl.", "gr.", "0,5 l", "Rolle" — tek fiyatlı üründe varyant satırı olmaz.
+  size       String
+  priceCents Int
+  sortOrder  Int    @default(0)
+
+  @@unique([productId, size])
+}
+
+/**
+ * ─────────────────────────────────────────────────────── döner yapılandırıcı
+ */
+
+model BuilderGroup {
+  /// "bread" | "protein" | "veggies" | "sauce" — kimlikler kod tarafından
+  /// belirlenir, arayüz onlara göre kuruludur. Panelden yalnızca seçeneklerin
+  /// metni ve ek ücreti değişir.
+  id        String          @id
+  mode      BuilderMode
+  sortOrder Int             @default(0)
+  options   BuilderOption[]
+}
+
+model BuilderOption {
+  id      String       @id
+  groupId String
+  group   BuilderGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  label   String
+  labelDe String @default("")
+  desc    String @default("")
+  descDe  String @default("")
+
+  /// Taban fiyata eklenen **ek ücret** (cent). 0 = dahil.
+  priceCents Int     @default(0)
+  kcal       Int     @default(0)
+  image      String?
+  sortOrder  Int     @default(0)
+
+  @@index([groupId, sortOrder])
+}
+
+/**
+ * ══════════════════════════════════════════════════════════════════ ayarlar
+ */
+
+model Settings {
+  /// Tekil kayıt: her zaman id = 1.
+  id Int @id @default(1)
+
+  /// Paket/servis ücreti. 0 = ücret alınmıyor.
+  serviceFeeCents      Int @default(0)
+  /// Bu tutarın üstünde servis ücreti alınmaz. 0 = eşik yok.
+  freeServiceOverCents Int @default(0)
+
+  /// Yapılandırıcının taban fiyatını okuduğu katalog ürünü.
+  builderBaseProductId      String?
+  builderFallbackPriceCents Int     @default(0)
+
+  /// Acil kapatma anahtarı — "Bestellannahme pausieren".
+  orderingEnabled Boolean @default(true)
+  deliveryEnabled Boolean @default(true)
+  pickupEnabled   Boolean @default(false)
+  /// Nakit ödeme şimdilik kapalı. Açmak kod değil, bu anahtar.
+  cashEnabled     Boolean @default(false)
+
+  /// Ortalama hazırlık süresi (dk); müşteriye tahmini teslim saati bundan çıkar.
+  prepMinutes Int @default(30)
+
+  updatedAt DateTime @updatedAt
+}
+
+/// Teslimat bölgesi. Posta kodu başına minimum sepet, ücret ve tahmini süre.
+model DeliveryZone {
+  id            String  @id @default(cuid())
+  postalCode    String  @unique
+  city          String  @default("")
+  minOrderCents Int     @default(0)
+  feeCents      Int     @default(0)
+  /// Bu tutarın üstünde teslimat ücretsiz. 0 = eşik yok.
+  freeOverCents Int     @default(0)
+  etaMinutes    Int     @default(45)
+  active        Boolean @default(true)
+}
+
+/// Haftalık çalışma saati. Bir güne birden çok aralık girilebilir (öğle/akşam).
+model OpeningHour {
+  id          String @id @default(cuid())
+  /// 0 = Pazar … 6 = Cumartesi (JS getDay ile aynı).
+  weekday     Int
+  /// Gün başından itibaren dakika (11:00 → 660).
+  openMinute  Int
+  closeMinute Int
+
+  @@index([weekday])
+}
+
+/// Tek seferlik kapalı gün (tatil, bakım).
+model SpecialClosure {
+  id     String   @id @default(cuid())
+  date   DateTime @unique @db.Date
+  reason String   @default("")
+}
+
+/**
+ * ══════════════════════════════════════════════════════════════════ sipariş
+ */
+
+model Order {
+  id      String @id @default(cuid())
+  /// "SD-260907-001" — gün içinde artan, yeniden kullanılmaz.
+  orderNo String @unique
+
+  /// Siparişi veren hesap. **Misafir siparişinde null'dur** ve öyle kalır:
+  /// üyelik zorunlu değildir. Hesap silinse bile sipariş ayakta kalmalı
+  /// (Buchungsbeleg), bu yüzden SetNull.
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  status      OrderStatus @default(PENDING_PAYMENT)
+  fulfillment Fulfillment @default(DELIVERY)
+  /// "tr" | "de" — sipariş anındaki dil; e-posta ve takip sayfası bunu kullanır.
+  lang        String      @default("de")
+
+  customerName String
+  phone        String
+  /// Misafir siparişinde e-posta zorunlu değildir. Boşsa Stripe Checkout'un
+  /// topladığı adres webhook sırasında buraya yazılır.
+  email        String @default("")
+  street       String @default("")
+  houseNo      String @default("")
+  /// "3. OG links" — kat/daire. Teslimat kararına GİRMEZ, yalnızca kuryenin
+  /// kapıyı bulması içindir; bu yüzden serbest metin ve zorunlu değil.
+  floor        String @default("")
+  /// Kapı zilinde yazan isim. Sipariş adından farklı olabilir (ortak konut,
+  /// eşin soyadı, firma adı) — kurye zili bulamazsa sipariş geri döner.
+  bellName     String @default("")
+  zip          String @default("")
+  city         String @default("")
+  note         String @default("")
+
+  /// Müşterinin istediği teslim saati; boşsa "en kısa sürede".
+  requestedAt DateTime?
+
+  /// Sipariş anında dondurulan tahmini süre (hazırlık + bölge, dakika).
+  /// Bölge ücretleri sonradan değişse bile siparişe verilen söz değişmez.
+  etaMinutes Int?
+  /// **Söz verilen teslim saati.** Ödeme onaylandığı an dondurulur
+  /// (paidAt + etaMinutes) ve yalnızca panelden bilinçli gecikme bildirimiyle
+  /// değişir. Her sayfa yenilemesinde yeniden hesaplanan bir ETA kayar durur
+  /// ve müşterinin güvenini bitirir; bu yüzden hesap değil, kayıt.
+  promisedAt DateTime?
+
+  subtotalCents    Int
+  deliveryFeeCents Int @default(0)
+  serviceFeeCents  Int @default(0)
+  totalCents       Int
+
+  /// Orana göre net/KDV/brüt dökümü, sipariş anında DONDURULUR.
+  /// [{ rate: 7, netCents, vatCents, grossCents }, { rate: 19, ... }]
+  vatBreakdown Json
+
+  paymentMethod PaymentMethod @default(ONLINE)
+  paymentStatus PaymentStatus @default(PENDING)
+
+  createdAt      DateTime  @default(now())
+  /// Panelde "Onayla"ya basıldığı an — sesli uyarı bundan sonra susar.
+  acknowledgedAt DateTime?
+  acceptedAt     DateTime?
+  readyAt        DateTime?
+  deliveredAt    DateTime?
+  cancelledAt    DateTime?
+  cancelReason   String?
+  /// Ödenmeyen sipariş bu saatten sonra EXPIRED'a düşer.
+  expiresAt      DateTime?
+
+  lines    OrderLine[]
+  events   OrderEvent[]
+  payments Payment[]
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+  /// "hesabımın siparişleri, yeniden eskiye" sorgusunun tek indeksi.
+  @@index([customerId, createdAt])
+}
+
+model OrderLine {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  /// Yalnızca raporlama için. Ürün silinse bile satır ayakta kalır — fiyat ve
+  /// ad aşağıdaki anlık görüntüden okunur, bu ilişkiden değil.
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  kind LineKind @default(PRODUCT)
+
+  // ---- anlık görüntü: sipariş anındaki hâl, bir daha değişmez ----
+  label     String
+  detail    String @default("")
+  unitCents Int
+  qty       Int
+  lineCents Int
+  vatRate   Int
+  /// Yapılandırıcı seçimleri / varyant boyu — satırın tarifi.
+  options   Json?
+
+  @@index([orderId])
+}
+
+/// Durum geçmişi. Append-only: yazılır, hiç güncellenmez, hiç silinmez.
+model OrderEvent {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  from  OrderStatus?
+  to    OrderStatus
+  /// "system" | "customer" | "stripe" | admin kullanıcı e-postası
+  actor String
+  meta  Json?
+  at    DateTime     @default(now())
+
+  @@index([orderId, at])
+}
+
+/**
+ * ════════════════════════════════════════════════════════════════════ ödeme
+ */
+
+model Payment {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  provider    String        @default("stripe")
+  /// Stripe Checkout Session / PaymentIntent kimliği.
+  providerRef String
+  amountCents Int
+  status      PaymentStatus @default(PENDING)
+  /// "card" | "paypal" | "apple_pay" … — sağlayıcının bildirdiği yöntem.
+  method      String?
+  raw         Json?
+
+  createdAt DateTime  @default(now())
+  paidAt    DateTime?
+
+  refunds Refund[]
+
+  @@unique([provider, providerRef])
+  @@index([orderId])
+}
+
+model Refund {
+  id        String  @id @default(cuid())
+  paymentId String
+  payment   Payment @relation(fields: [paymentId], references: [id])
+
+  amountCents Int
+  providerRef String
+  reason      String   @default("")
+  createdAt   DateTime @default(now())
+
+  @@index([paymentId])
+}
+
+/// Webhook idempotency defteri.
+///
+/// Stripe aynı olayı 72 saat boyunca tekrar gönderebilir. UNIQUE kısıt, aynı
+/// olayın ikinci kez işlenmesini veritabanı seviyesinde imkânsız kılar —
+/// uygulama katmanındaki bir kontrolün yarışması mümkün değildir.
+model WebhookEvent {
+  id              String    @id @default(cuid())
+  provider        String
+  providerEventId String
+  type            String    @default("")
+  receivedAt      DateTime  @default(now())
+  processedAt     DateTime?
+  error           String?
+  payload         Json?
+
+  @@unique([provider, providerEventId])
+}
+
+/// Günlük sipariş numarası sayacı. "260907" → 12 demek, o gün 12. sipariş.
+model OrderCounter {
+  day String @id
+  seq Int    @default(0)
+}
+
+/**
+ * ═════════════════════════════════════════════════════════════ müşteri hesabı
+ */
+
+/// Müşteri hesabı.
+///
+/// Üyelik **isteğe bağlıdır**: misafir siparişi kaldırılmadı, hesap yalnızca
+/// adresi hatırlamak ve geçmişi göstermek için var. Bu yüzden burada siparişin
+/// çalışması için zorunlu hiçbir alan yoktur.
+///
+/// DSGVO Art. 17 (silme) ile § 147 AO (belge saklama) çatışır: sipariş
+/// kayıtları silinemez, ama hesabın kişisel alanları silinebilir. Çözüm
+/// hesabı silmek değil **anonimleştirmektir** — `anonymizedAt` dolduğunda ad,
+/// telefon ve adres temizlenir, e-posta geri döndürülemez bir takma değere
+/// çevrilir, siparişler `customerId` bağı kopmadan yerinde kalır.
+model Customer {
+  id String @id @default(cuid())
+
+  /// Giriş kimliği. Küçük harfe indirgenmiş hâliyle saklanır; "Ali@x.de" ve
+  /// "ali@x.de" aynı hesaptır.
+  email        String @unique
+  /// "pbkdf2$sha256$<yineleme>$<tuz>$<özet>" — bkz. lib/account/password.ts.
+  passwordHash String
+
+  name  String @default("")
+  phone String @default("")
+
+  /// Varsayılan teslimat adresi; sipariş formunu önden doldurur. Siparişe
+  /// **kopyalanır**, referans verilmez: adres sonradan değişince eski sipariş
+  /// nereye teslim edildiğini unutmasın.
+  street  String @default("")
+  houseNo String @default("")
+  zip     String @default("")
+  city    String @default("")
+
+  /// Son kullanılan arayüz dili; e-postalar bunu kullanır.
+  lang String @default("de")
+
+  /// E-posta doğrulaması. Sipariş için zorunlu değildir — doğrulanmamış hesap
+  /// da sipariş verebilir; doğrulama yalnızca parola sıfırlamanın güvenilirliği
+  /// içindir.
+  emailVerifiedAt DateTime?
+
+  /// Açık oturumları topluca geçersiz kılar. Parola değişiminde ve
+  /// "her yerden çıkış yap" işleminde artar; oturum jetonu bu sayıyı taşır,
+  /// eşleşmeyen jeton reddedilir.
+  tokenVersion Int @default(0)
+
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+  /// Doldurulduysa hesap DSGVO Art. 17 uyarınca anonimleştirilmiştir.
+  anonymizedAt DateTime?
+
+  orders         Order[]
+  passwordResets PasswordReset[]
+  addresses      CustomerAddress[]
+  favorites      Favorite[]
+
+  @@index([createdAt])
+}
+
+/// Parola sıfırlama jetonu.
+///
+/// Jetonun kendisi **saklanmaz**, yalnızca SHA-256 özeti saklanır. Veritabanı
+/// sızsa bile tablodaki değerlerle kimsenin hesabına girilemez — aynı mantık
+/// parola alanında da geçerlidir.
+model PasswordReset {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  /// Jetonun SHA-256 özeti (base64url).
+  tokenHash String    @unique
+  expiresAt DateTime
+  /// Bir jeton yalnızca bir kez kullanılır; ikinci deneme reddedilir.
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([customerId, createdAt])
+}
+
+/// Hesabın adres defteri.
+///
+/// Siparişe **kopyalanır**, referans verilmez (bkz. Order): adres sonradan
+/// düzeltilse bile eski sipariş nereye gittiğini unutmasın. Müşteri hesabındaki
+/// tekil `street/zip/...` alanları geriye dönük uyum için duruyor; varsayılan
+/// adres artık burada `isDefault` ile işaretlenir ve profil alanları onunla
+/// eşitlenir.
+model CustomerAddress {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  /// "Ev", "İş" — müşterinin listede tanıması için. Boşsa sokak adı gösterilir.
+  label    String @default("")
+  street   String @default("")
+  houseNo  String @default("")
+  /// Kat/daire ve zil ismi teslimat kararına girmez, kuryenin kapıyı bulması
+  /// içindir; bu yüzden zorunlu değil.
+  floor    String @default("")
+  bellName String @default("")
+  zip      String @default("")
+  city     String @default("")
+
+  /// Ödeme formunu önden dolduran adres. Hesap başına en fazla bir tane;
+  /// kural uygulama katmanında (bkz. lib/account/addresses.ts) korunur.
+  isDefault Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId, createdAt])
+}
+
+/// Favori ürün.
+///
+/// Ürüne **referans**tır, kopya değil: burada dondurulacak bir tutar yok,
+/// müşteri her zaman ürünün güncel hâlini görmek ister. Ürün silinirse favori
+/// de gider (Cascade) — silinmiş ürüne giden bir favori listesi işe yaramaz.
+model Favorite {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, productId])
+  @@index([customerId, createdAt])
+}
+
+/**
+ * ══════════════════════════════════════════════════════════════════ yönetim
+ */
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String    @default("")
+  role         AdminRole @default(STAFF)
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+}
+
+/// Giriş denemesi sayacı. Bellekte tutulursa sunucu yeniden başlayınca sıfırlanır
+/// ve çok örnekli dağıtımda hiç çalışmaz; bu yüzden veritabanında.
+model LoginAttempt {
+  /// IP adresi.
+  key          String    @id
+  count        Int       @default(0)
+  firstAt      DateTime  @default(now())
+  blockedUntil DateTime?
+}
+
+/**
+ * ══════════════════════════════════════════════════════════════════ enum'lar
+ */
+
+enum BuilderMode {
+  single
+  multi
+}
+
+enum LineKind {
+  PRODUCT
+  BUILDER
+}
+
+enum Fulfillment {
+  DELIVERY
+  PICKUP
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  ACCEPTED
+  PREPARING
+  READY
+  OUT_FOR_DELIVERY
+  DELIVERED
+  PICKED_UP
+  CANCELLED
+  REJECTED
+  EXPIRED
+}
+
+enum PaymentMethod {
+  ONLINE
+  CASH
+  CARD_ON_DELIVERY
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  EXPIRED
+}
+
+enum AdminRole {
+  OWNER
+  STAFF
+}
+
+/// LMIV Ek II — bildirimi zorunlu 14 alerjen.
+enum Allergen {
+  GLUTEN
+  CRUSTACEANS
+  EGGS
+  FISH
+  PEANUTS
+  SOYBEANS
+  MILK
+  NUTS
+  CELERY
+  MUSTARD
+  SESAME
+  SULPHITES
+  LUPIN
+  MOLLUSCS
+}
+
+/// ZZulV — kenntlichmachungspflichtige 14 katkı maddesi sınıfı.
+enum Additive {
+  FARBSTOFF
+  KONSERVIERUNGSSTOFF
+  ANTIOXIDATIONSMITTEL
+  GESCHMACKSVERSTAERKER
+  GESCHWEFELT
+  GESCHWAERZT
+  GEWACHST
+  PHOSPHAT
+  SUESSUNGSMITTEL
+  PHENYLALANINQUELLE
+  ABFUEHREND
+  KOFFEINHALTIG
+  CHININHALTIG
+  TAURINHALTIG
+}

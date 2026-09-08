@@ -1,0 +1,226 @@
+import { prisma } from "@/lib/db";
+
+/**
+ * Siparişin kabul edilip edilmeyeceğine dair kurallar.
+ *
+ * Hepsi sunucuda çalışır. Arayüz aynı kuralları önden gösterir (kapalıyken
+ * "şu an kapalıyız" der), ama **karar burada verilir**: istemci tarafı kontrol
+ * atlatılabilir, bu katman atlatılamaz.
+ */
+
+const TIME_ZONE = "Europe/Berlin";
+
+/**
+ * Geliştirme kaçamağı: çalışma saati kontrolünü atlar.
+ *
+ * Sipariş akışını dükkân kapalıyken de deneyebilmek için var. Bilerek
+ * NODE_ENV'e bağlanmadı — Vercel önizleme dağıtımları da `production` olarak
+ * çalışır ve orada da test edilebilmesi gerekiyor.
+ *
+ * DİKKAT: canlıya çıkmadan önce bu değişken ortamdan **silinmeli**. Açık
+ * kaldığı sürece müşteri gece 03:00'te sipariş verebilir ve ödeme alınır.
+ * Bu yüzden her atlamada sunucu günlüğüne uyarı düşer.
+ */
+function openingHoursBypassed(): boolean {
+  if (process.env.ORDERS_IGNORE_OPENING_HOURS !== "true") return false;
+  console.warn(
+    "[siparis] ORDERS_IGNORE_OPENING_HOURS acik: calisma saati kontrolu atlandi. " +
+      "Canliya cikmadan once bu degiskeni kaldirin.",
+  );
+  return true;
+}
+
+/**
+ * İşletmenin yerel saatiyle "şimdi".
+ *
+ * Sunucu UTC'de çalışabilir (Vercel, Docker); `new Date().getDay()` bu yüzden
+ * yanlış gün verebilir. Gün ve saat her zaman Europe/Berlin'e göre okunur —
+ * yaz saati geçişleri de dahil.
+ */
+function berlinNow(now: Date = new Date()): {
+  weekday: number;
+  minutes: number;
+  isoDate: string;
+} {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: TIME_ZONE,
+    weekday: "short",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+
+  const weekdays: Record<string, number> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  };
+
+  // 24:00 gece yarısını gösterir; dakika hesabında 0 olmalı.
+  const hour = Number(get("hour")) % 24;
+
+  return {
+    weekday: weekdays[get("weekday")] ?? 0,
+    minutes: hour * 60 + Number(get("minute")),
+    isoDate: `${get("year")}-${get("month")}-${get("day")}`,
+  };
+}
+
+/**
+ * Verilen anda dükkân açık mı.
+ *
+ * Gece yarısını aşan aralıklar (18:00–02:00) desteklenir: kapanış saati açılış
+ * saatinden küçükse aralık ertesi güne sarkıyor demektir.
+ */
+export async function isOpenNow(now: Date = new Date()): Promise<boolean> {
+  if (openingHoursBypassed()) return true;
+
+  const { weekday, minutes, isoDate } = berlinNow(now);
+
+  const closure = await prisma.specialClosure.findUnique({
+    where: { date: new Date(`${isoDate}T00:00:00.000Z`) },
+    select: { id: true },
+  });
+  if (closure) return false;
+
+  const hours = await prisma.openingHour.findMany({
+    where: { weekday: { in: [weekday, (weekday + 6) % 7] } },
+  });
+
+  return hours.some((h) => {
+    const wraps = h.closeMinute <= h.openMinute;
+    if (h.weekday === weekday) {
+      return wraps ? minutes >= h.openMinute : minutes >= h.openMinute && minutes < h.closeMinute;
+    }
+    // Bir önceki günün gece yarısını aşan aralığı bugüne sarkıyor mu.
+    return wraps && minutes < h.closeMinute;
+  });
+}
+
+export type DeliveryZoneInfo = {
+  postalCode: string;
+  city: string;
+  minOrderCents: number;
+  feeCents: number;
+  freeOverCents: number;
+  etaMinutes: number;
+};
+
+/** Posta kodu teslimat bölgesinde mi; değilse null. */
+export async function findDeliveryZone(zip: string): Promise<DeliveryZoneInfo | null> {
+  const zone = await prisma.deliveryZone.findUnique({ where: { postalCode: zip.trim() } });
+  if (!zone || !zone.active) return null;
+  return {
+    postalCode: zone.postalCode,
+    city: zone.city,
+    minOrderCents: zone.minOrderCents,
+    feeCents: zone.feeCents,
+    freeOverCents: zone.freeOverCents,
+    etaMinutes: zone.etaMinutes,
+  };
+}
+
+/**
+ * Bölgenin teslimat ücreti.
+ *
+ * Eşik varsa ve sepet eşiği geçtiyse ücret alınmaz. PAngV § 6 gereği bu tutar
+ * müşteriye **sipariş verilmeden önce** gösterilmek zorunda; bu yüzden aynı
+ * fonksiyon hem fiyat teklifinde hem sipariş oluşturmada kullanılır.
+ */
+export function deliveryFeeFor(zone: DeliveryZoneInfo, subtotalCents: number): number {
+  if (zone.freeOverCents > 0 && subtotalCents >= zone.freeOverCents) return 0;
+  return zone.feeCents;
+}
+
+/** İşletme ayarlarının sipariş akışını ilgilendiren kısmı. */
+export async function getOrderSettings() {
+  const settings = await prisma.settings.findUnique({ where: { id: 1 } });
+  return {
+    orderingEnabled: settings?.orderingEnabled ?? true,
+    deliveryEnabled: settings?.deliveryEnabled ?? true,
+    pickupEnabled: settings?.pickupEnabled ?? false,
+    cashEnabled: settings?.cashEnabled ?? false,
+    prepMinutes: settings?.prepMinutes ?? 30,
+  };
+}
+
+/** Sipariş reddedilme sebepleri — arayüz bunları kendi diline çevirir. */
+export type RejectionReason =
+  | { code: "ordering_paused" }
+  | { code: "closed" }
+  | { code: "fulfillment_disabled"; fulfillment: "DELIVERY" | "PICKUP" }
+  | { code: "out_of_delivery_area"; zip: string }
+  | { code: "below_minimum"; minOrderCents: number; subtotalCents: number };
+
+export type OrderabilityResult =
+  | { ok: true; zone: DeliveryZoneInfo | null; etaMinutes: number }
+  /**
+   * Ret hâlinde de bölge taşınır (bulunabildiyse).
+   *
+   * Sepet eşiğinin altında kalan müşteriye "buraya teslimat 2,50 €, minimum
+   * 15 €" demek gerekiyor; bunun için bölgeyi ikinci kez sorgulamak, kararın
+   * verildiği yerle gösterimin ayrışması riskini doğururdu.
+   */
+  | { ok: false; reason: RejectionReason; zone: DeliveryZoneInfo | null };
+
+/**
+ * Siparişin kabul edilebilirliği — tek karar noktası.
+ *
+ * Sıra önemlidir: önce dükkân hiç sipariş alıyor mu, sonra açık mı, sonra bu
+ * teslim biçimi açık mı, sonra adres bölgede mi, en sonda sepet eşiği. Böylece
+ * müşteriye gösterilen ilk hata en temel olanıdır.
+ */
+export async function checkOrderability(input: {
+  fulfillment: "DELIVERY" | "PICKUP";
+  zip?: string;
+  subtotalCents: number;
+  now?: Date;
+}): Promise<OrderabilityResult> {
+  const settings = await getOrderSettings();
+  if (!settings.orderingEnabled) {
+    return { ok: false, reason: { code: "ordering_paused" }, zone: null };
+  }
+
+  if (!(await isOpenNow(input.now))) return { ok: false, reason: { code: "closed" }, zone: null };
+
+  if (input.fulfillment === "DELIVERY" && !settings.deliveryEnabled) {
+    return {
+      ok: false,
+      reason: { code: "fulfillment_disabled", fulfillment: "DELIVERY" },
+      zone: null,
+    };
+  }
+  if (input.fulfillment === "PICKUP" && !settings.pickupEnabled) {
+    return {
+      ok: false,
+      reason: { code: "fulfillment_disabled", fulfillment: "PICKUP" },
+      zone: null,
+    };
+  }
+
+  if (input.fulfillment === "PICKUP") {
+    return { ok: true, zone: null, etaMinutes: settings.prepMinutes };
+  }
+
+  const zip = input.zip?.trim() ?? "";
+  const zone = await findDeliveryZone(zip);
+  if (!zone) return { ok: false, reason: { code: "out_of_delivery_area", zip }, zone: null };
+
+  if (input.subtotalCents < zone.minOrderCents) {
+    return {
+      ok: false,
+      reason: {
+        code: "below_minimum",
+        minOrderCents: zone.minOrderCents,
+        subtotalCents: input.subtotalCents,
+      },
+      zone,
+    };
+  }
+
+  return { ok: true, zone, etaMinutes: zone.etaMinutes };
+}

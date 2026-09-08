@@ -15,7 +15,7 @@ export default function Reviews() {
               <span className="text-amber text-xl">★★★★★</span>
               <span className="tag text-smoke">{t.reviews.count}</span>
             </div>
-            <h2 className="font-display font-extrabold text-[7vw] md:text-[2.8vw] leading-[1] text-bone">
+            <h2 className="section-title font-display font-extrabold text-bone">
               {t.reviews.subTitle}
             </h2>
           </div>

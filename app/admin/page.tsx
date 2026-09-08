@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { getCatalog, getStats, isVisible } from "@/lib/admin/store";
+import { getOrderStats } from "@/lib/orders/stats";
+import { formatCents } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
-  const [stats, catalog] = await Promise.all([getStats(), getCatalog()]);
+  const [stats, catalog, orders] = await Promise.all([
+    getStats(),
+    getCatalog(),
+    getOrderStats(),
+  ]);
 
   const cards = [
     { label: "Toplam ürün", value: stats.totalProducts, tone: "text-bone" },
@@ -37,6 +43,76 @@ export default async function AdminDashboard() {
         <h1 className="font-display font-extrabold text-3xl md:text-4xl text-bone">Dashboard</h1>
       </header>
 
+      {/*
+        Sipariş metrikleri.
+
+        "Bugün" işletmenin yerel günüdür (Europe/Berlin) ve ciroya yalnızca
+        ödemesi alınmış siparişler girer — bkz. lib/orders/stats.ts.
+      */}
+      <section className="mb-10">
+        <h2 className="font-display font-extrabold text-xl text-bone mb-4">Bugün</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-line border border-line">
+          <div className="bg-char p-6">
+            <p className="font-display font-extrabold text-4xl tabular-nums text-bone">
+              {orders.todayOrders}
+            </p>
+            <p className="tag text-smoke mt-2">Sipariş</p>
+          </div>
+          <div className="bg-char p-6">
+            <p className="font-display font-extrabold text-4xl tabular-nums text-herb">
+              {formatCents(orders.todayRevenueCents)}
+            </p>
+            <p className="tag text-smoke mt-2">Ciro</p>
+          </div>
+          <div className="bg-char p-6">
+            <p className="font-display font-extrabold text-4xl tabular-nums text-amber">
+              {formatCents(orders.todayAverageCents)}
+            </p>
+            <p className="tag text-smoke mt-2">Ortalama sepet</p>
+          </div>
+          <div className="bg-char p-6">
+            <p
+              className={`font-display font-extrabold text-4xl tabular-nums ${
+                orders.unacknowledged > 0 ? "text-flame" : "text-smoke"
+              }`}
+            >
+              {orders.activeOrders}
+            </p>
+            <p className="tag text-smoke mt-2">
+              Akışta
+              {orders.unacknowledged > 0 && (
+                <span className="text-flame"> · {orders.unacknowledged} yeni</span>
+              )}
+            </p>
+          </div>
+        </div>
+
+        <p className="tag text-smoke/70 mt-3">
+          Son 7 gün: {orders.weekOrders} sipariş · {formatCents(orders.weekRevenueCents)}
+        </p>
+
+        {/* Ayrıntılı ciro, KDV dökümü ve Stripe bağlantıları ayrı ekranda:
+            dashboard "şu an ne oluyor" sorusunu cevaplar, o ekran "ay nasıl
+            gitti" sorusunu. */}
+        <Link
+          href="/admin/finanzen"
+          className="focus-ring tag mt-3 inline-block border border-line px-4 py-2.5 text-smoke transition-colors hover:border-amber hover:text-amber"
+        >
+          CİRO VE ÖDEMELER →
+        </Link>
+
+        {orders.unacknowledged > 0 && (
+          <Link
+            href="/admin/orders"
+            className="focus-ring tag mt-4 inline-block border border-flame bg-flame/10 px-5 py-3 text-flame transition-colors hover:bg-flame hover:text-void"
+          >
+            {orders.unacknowledged} YENİ SİPARİŞ BEKLİYOR →
+          </Link>
+        )}
+      </section>
+
+      <h2 className="font-display font-extrabold text-xl text-bone mb-4">Katalog</h2>
+
       <section className="grid grid-cols-2 lg:grid-cols-3 gap-px bg-line border border-line mb-10">
         {cards.map((card) => (
           <div key={card.label} className="bg-char p-6">
@@ -47,12 +123,6 @@ export default async function AdminDashboard() {
           </div>
         ))}
       </section>
-
-      {/* Sipariş sistemi projede mevcut olmadığı için sipariş metrikleri gösterilmiyor. */}
-      <p className="text-xs text-smoke/70 border border-line bg-char px-4 py-3 mb-10">
-        Projede sipariş kaydı tutan bir sistem bulunmadığı için sipariş metrikleri
-        gösterilmiyor. Sepet yalnızca ziyaretçinin tarayıcısında saklanıyor.
-      </p>
 
       <div className="grid lg:grid-cols-2 gap-8">
         <section>

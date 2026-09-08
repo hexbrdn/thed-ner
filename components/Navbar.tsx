@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCart } from "@/lib/cart";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
@@ -10,6 +11,7 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { count, openCart } = useCart();
   const { lang, setLang, t } = useLanguage();
+  const pathname = usePathname();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -17,16 +19,42 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Bölüm bağlantıları "/#..." biçiminde: menü sayfasından tıklandığında da
-  // ana sayfanın doğru bölümüne gider. Ürünler artık kendi sayfasında olduğu
-  // için "Speisekarte" bir route'a bakar.
-  const LINKS = [
-    { href: "/speisekarte", label: t.nav.menu, route: true },
-    { href: "/#filialen", label: t.nav.filialen },
-    { href: "/#unternehmen", label: t.nav.unternehmen },
-    { href: "/#franchise", label: t.nav.franchise },
+  /*
+   * Gezinme.
+   *
+   * İki tür bağlantı var ve ayrımı `exact` alanı taşır:
+   *  - **Sayfa** bağlantıları (`/`, `/speisekarte`, `/ueber-uns`) aktif
+   *    işaretlenebilir; hangi sayfada olduğunuzu gösterirler.
+   *  - **Çapa** bağlantıları (`/#builder`, `/#filialen`) ana sayfanın birer
+   *    bölümüdür, sayfa değil — hiçbir zaman aktif işaretlenmezler.
+   *
+   * Tanıtım bölümleri `/ueber-uns` sayfasına taşındığı için "Hakkımızda" artık
+   * ana sayfanın bir çapasına değil o sayfaya gider. Franchise bağlantısı
+   * navigasyondan çıkarıldı; bölüm `/ueber-uns` içinde duruyor ve altbilgide
+   * bağlantısı var, dolayısıyla erişilebilirliği kaybolmadı.
+   */
+  const LINKS: { href: string; label: string; exact?: boolean }[] = [
+    { href: "/", label: t.nav.home, exact: true },
+    { href: "/speisekarte", label: t.nav.menu },
     { href: "/#builder", label: t.nav.buildYourOwn },
+    { href: "/#filialen", label: t.nav.filialen },
+    { href: "/ueber-uns", label: t.nav.unternehmen },
   ];
+
+  /**
+   * Bağlantı bulunduğumuz sayfayı mı gösteriyor.
+   *
+   * Çapa bağlantıları (`#` içerenler) her zaman pasiftir: ana sayfadayken
+   * "Kendin seç"i de işaretlemek, beş bağlantıdan üçünü aynı anda vurgulardı
+   * ve işaret hiçbir şey anlatmazdı.
+   *
+   * "Ana Sayfa" tam eşleşme ister; `startsWith` kullanılsaydı "/" her yolun
+   * ön eki olduğu için her sayfada aktif görünürdü.
+   */
+  const isActive = (link: { href: string; exact?: boolean }): boolean => {
+    if (link.href.includes("#")) return false;
+    return link.exact ? pathname === link.href : pathname.startsWith(link.href);
+  };
 
   return (
     <header
@@ -34,12 +62,9 @@ export default function Navbar() {
         scrolled ? "bg-void/90 backdrop-blur-md border-b border-line shadow-[0_14px_50px_rgba(0,0,0,0.4)]" : "bg-transparent"
       }`}
     >
-      {/* Top Banner */}
-      {/* Adres/telefon şeridi: dar ekranda kırpılmak yerine küçülür,
-          böylece telefon numarası mobilde de görünür kalır. */}
-      <div className="bg-flame-gradient text-void text-[10px] sm:text-[11px] font-mono uppercase tracking-wider sm:tracking-widest text-center py-1 px-3 sm:px-4 font-bold [overflow-wrap:anywhere]">
-        {t.nav.franchiseInfo}
-      </div>
+      {/* Buradaki turuncu adres/telefon şeridi kaldırıldı: her sayfanın en
+          üstünde duran parlak bir bant, sayfaya bakan gözün ilk gördüğü şey
+          oluyordu. Aynı bilgi Konum bölümünde ve altbilgide duruyor. */}
 
       <nav className="max-w-[1400px] mx-auto flex items-center justify-between gap-2 px-4 sm:px-6 md:px-10 py-4">
         <Link href="/" className="focus-ring font-display font-extrabold text-base sm:text-lg md:text-xl tracking-tight text-bone shrink-0">
@@ -48,18 +73,26 @@ export default function Navbar() {
 
         {/* Desktop Links */}
         <ul className="hidden lg:flex items-center gap-6 tag text-smoke">
-          {LINKS.map((l) => (
-            <li key={l.href}>
-              <Link
-                href={l.href}
-                className={`focus-ring transition-colors ${
-                  l.route ? "text-amber hover:text-bone" : "hover:text-amber"
-                }`}
-              >
-                {l.label}
-              </Link>
-            </li>
-          ))}
+          {LINKS.map((l) => {
+            const active = isActive(l);
+            return (
+              <li key={l.href}>
+                <Link
+                  href={l.href}
+                  aria-current={active ? "page" : undefined}
+                  // Aktif işaret dolgu değil ince alt çizgi: dolgu bir düğme
+                  // gibi görünüp "tıkla" diyordu, oysa zaten oradasınız.
+                  className={`focus-ring block border-b-2 pb-0.5 transition-colors ${
+                    active
+                      ? "border-amber text-amber"
+                      : "border-transparent hover:text-amber"
+                  }`}
+                >
+                  {l.label}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
 
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
@@ -84,6 +117,19 @@ export default function Navbar() {
               DE
             </button>
           </div>
+
+          {/* Hesap.
+              Bağlantı her zaman /konto'yu gösterir; oturum yoksa o sayfa
+              girişe yönlendirir. Navbar istemci bileşeni olduğu için oturumu
+              burada okumak, her sayfada ek bir istek anlamına gelirdi —
+              yönlendirme kararı zaten sunucuda veriliyor. */}
+          <Link
+            href="/konto"
+            aria-label={t.nav.account}
+            className="focus-ring tag hidden sm:block border border-line text-smoke px-3 py-2 hover:border-amber hover:text-amber transition-colors"
+          >
+            {t.nav.account}
+          </Link>
 
           {/* Cart Button */}
           <button
@@ -115,23 +161,29 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="lg:hidden bg-char/95 backdrop-blur-lg border-b border-line px-6 py-6 space-y-4">
           <ul className="space-y-3 tag text-smoke">
-            {LINKS.map((l) => (
-              <li key={l.href}>
-                <Link
-                  href={l.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={`block py-1 transition-colors text-sm ${
-                    l.route ? "text-amber font-bold" : "text-bone hover:text-amber"
-                  }`}
-                >
-                  {l.label}
-                </Link>
-              </li>
-            ))}
+            {LINKS.map((l) => {
+              const active = isActive(l);
+              return (
+                <li key={l.href}>
+                  <Link
+                    href={l.href}
+                    onClick={() => setMobileOpen(false)}
+                    aria-current={active ? "page" : undefined}
+                    className={`block border-l-2 py-1 pl-3 text-sm transition-colors ${
+                      active
+                        ? "border-amber text-amber"
+                        : "border-transparent text-bone hover:text-amber"
+                    }`}
+                  >
+                    {l.label}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
 
           <div className="pt-4 border-t border-line flex items-center justify-between">
-            <span className="tag text-smoke">DİL / SPRACHE:</span>
+            <span className="tag text-smoke">SPRACHE:</span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {

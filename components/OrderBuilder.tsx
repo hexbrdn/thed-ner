@@ -214,12 +214,11 @@ export default function OrderBuilder() {
 
   return (
     <section ref={section} id="builder" className="relative overflow-hidden bg-void py-28 md:py-36">
-      <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(180deg,rgba(255,194,71,0.08),transparent_26%),radial-gradient(ellipse_at_78%_20%,rgba(255,61,18,0.14),transparent_34%)]" />
       <div className="max-w-[1400px] mx-auto px-6 md:px-10">
         <div className="builder-in flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
           <div>
             <p className="tag text-flame mb-3">{t.builder.tag}</p>
-            <h2 className="font-display font-extrabold text-[9vw] md:text-[3.2vw] leading-[0.95] text-bone">
+            <h2 className="section-title font-display font-extrabold text-bone">
               {t.builder.title1}
               <br />
               <span className="text-flame">{t.builder.title2}</span>
@@ -274,7 +273,7 @@ export default function OrderBuilder() {
               <p className="tag text-flame">{t.builder.orderTitle}</p>
               <button
                 onClick={() => {
-                  unlockAudio();
+                  void unlockAudio();
                   setSoundOn((v) => !v);
                 }}
                 aria-pressed={soundOn}

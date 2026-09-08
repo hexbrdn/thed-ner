@@ -11,7 +11,7 @@ export default function AboutUs() {
         <div className="mb-12">
           <p className="tag text-flame mb-2">{t.about.tag}</p>
           <p className="font-mono text-xs text-amber uppercase tracking-widest mb-3">{t.about.subTag}</p>
-          <h2 className="font-display font-extrabold text-[8vw] md:text-[3.2vw] leading-[0.95] text-bone">
+          <h2 className="section-title font-display font-extrabold text-bone">
             {t.about.title}
           </h2>
         </div>

@@ -7,15 +7,16 @@
   --font-mono: "JetBrains Mono", monospace;
   --font-body: "Inter", sans-serif;
 
-  /* Sabit header'ın yüksekliği (duyuru şeridi + navigasyon).
+  /* Sabit header'ın yüksekliği.
      Sayfaya yapışan öğeler (karta sayfasının kategori şeridi) ve bağlantı
-     hedefleri bu değeri kullanır, böylece navbarın altında kaybolmazlar. */
-  --nav-h: 88px;
+     hedefleri bu değeri kullanır, böylece navbarın altında kaybolmazlar.
+     Üstteki turuncu duyuru şeridi kaldırıldığı için değer küçüldü. */
+  --nav-h: 68px;
 }
 
 @media (min-width: 768px) {
   :root {
-    --nav-h: 92px;
+    --nav-h: 72px;
   }
 }
 
@@ -43,7 +44,9 @@ body {
   color: #070604;
 }
 
-/* thin cyber scrollbar */
+/* İnce kaydırma çubuğu. Alev gradyanı yerine düz çizgi rengi: her sayfanın
+   kenarında sürekli duran renkli bir şerit, göze sayfanın parçasıymış gibi
+   görünüp gürültüye ekleniyordu. */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -51,10 +54,14 @@ body {
   background: #11100C;
 }
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #FF3D12, #FFC247);
+  background: #34291F;
   border-radius: 999px;
 }
 
+/* Film grenli doku.
+   `mix-blend-mode: overlay` kaldırıldı: doku yazıların üstüne binip renkleri
+   kirletiyordu, "karışık" hissinin en büyük tek kaynağı buydu. Doku düşük
+   opaklıkta kalır — zemin canlı görünür, metin temiz okunur. */
 .grain-overlay {
   pointer-events: none;
   position: fixed;
@@ -62,8 +69,7 @@ body {
   z-index: 60;
   background-image: url('/assets/noise.png');
   background-size: 256px 256px;
-  mix-blend-mode: overlay;
-  opacity: 0.34;
+  opacity: 0.10;
 }
 
 .hud-line {
@@ -80,6 +86,43 @@ body {
 .text-outline {
   -webkit-text-stroke: 1px #FFF6E8;
   color: transparent;
+}
+
+/*
+ * Başlık ölçeği.
+ *
+ * Önceden her bölüm kendi `vw` değerini seçiyordu (2.6vw'den 13vw'ye kadar on
+ * bir farklı değer); yan yana geldiklerinde hiçbiri diğeriyle aynı hizada
+ * durmuyor ve sayfa dağınık görünüyordu. Artık iki ölçü var ve `clamp` ile
+ * sınırlı: küçük ekranda okunamayacak kadar küçülmez, geniş ekranda ekranı
+ * kaplamaz.
+ */
+.section-title {
+  font-size: clamp(1.75rem, 4vw, 3rem);
+  line-height: 0.98;
+}
+
+.hero-title {
+  font-size: clamp(3.5rem, 13vw, 9rem);
+  line-height: 0.9;
+}
+
+/*
+ * Form ve belge içi ara başlık — ölçeğin üçüncü ve son basamağı.
+ *
+ * `.section-title` bir bölümün adıdır (ekranda bir tane), bu ise bir bölümün
+ * içindeki adımın adıdır (birkaç tane). Ayrı bir basamak olmasaydı ödeme
+ * sayfasındaki "İletişim / Teslimat / Ödeme" başlıkları ya sayfa başlığı kadar
+ * büyük ya da etiketlerden ayırt edilemeyecek kadar küçük olurdu.
+ */
+.section-heading {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.0625rem;
+  letter-spacing: -0.01em;
+  color: #FFF6E8;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid #34291F;
 }
 
 .focus-ring {
@@ -118,15 +161,6 @@ body {
   width: 3px;
   background: linear-gradient(180deg, #FF3D12, #FFC247, #7BD66F);
   opacity: 0.9;
-}
-
-@keyframes scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100%); }
-}
-.scanline {
-  animation: scanline 6s linear infinite;
-  will-change: transform;
 }
 
 @keyframes pulseGlow {
@@ -275,4 +309,139 @@ body {
    yukarıdaki global kural süreyi 0'a çekince kıvılcımlar donuk nokta olarak kalıyordu */
 @media (prefers-reduced-motion: reduce) {
   .ember, .smoke-drift { display: none; }
+}
+
+/* ════════════════════════════════════════════════ 80 mm termal fiş çıktısı
+   Panelden "Fiş yazdır" denince basılan görünüm.
+
+   Ekranda hiç görünmez: `.receipt-root` normalde gizlidir ve yalnızca yazdırma
+   sırasında ortaya çıkar. Yazdırırken sayfanın geri kalanı gizlenir, çünkü
+   80 mm kâğıda sidebar ve düğmeler basmanın anlamı yok.
+
+   Tasarım bilinçli olarak ilkel: tek sütun, monospace, saf siyah. Termal
+   yazıcı gri ton ve arka plan rengi basmaz; ince ya da renkli yazı kâğıtta
+   okunmaz hâle gelir. */
+.receipt-root {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 3mm;
+  }
+
+  /* Görünürlüğü kapatmak, `display: none` yerine tercih edildi: kökten
+     gizlenen bir ağaçta fişin kendisi de kaybolurdu. */
+  body * {
+    visibility: hidden;
+  }
+
+  .receipt-root,
+  .receipt-root * {
+    visibility: visible;
+  }
+
+  .receipt-root {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 74mm;
+    color: #000;
+    background: #fff;
+    font-family: var(--font-mono), monospace;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  /* Site genelindeki kum dokusu kâğıda gri bir leke olarak basılırdı. */
+  .grain-overlay {
+    display: none !important;
+  }
+
+  .receipt-head,
+  .receipt-meta,
+  .receipt-foot {
+    text-align: center;
+  }
+
+  .receipt-order-no {
+    text-align: center;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin: 2mm 0 1mm;
+  }
+
+  .receipt-rule {
+    border: none;
+    border-top: 1px dashed #000;
+    margin: 2mm 0;
+  }
+
+  .receipt-block,
+  .receipt-note {
+    margin: 1mm 0;
+  }
+
+  .receipt-note {
+    border: 1px solid #000;
+    padding: 1.5mm;
+  }
+
+  .receipt-lines,
+  .receipt-totals,
+  .receipt-vat {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .receipt-lines td,
+  .receipt-totals td,
+  .receipt-vat td,
+  .receipt-vat th {
+    padding: 0.6mm 0;
+    vertical-align: top;
+  }
+
+  .receipt-qty {
+    width: 9mm;
+    font-weight: 700;
+  }
+
+  .receipt-amount {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .receipt-detail {
+    font-size: 10px;
+    padding-left: 1mm;
+  }
+
+  .receipt-grand td {
+    border-top: 1px solid #000;
+    padding-top: 1.2mm;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .receipt-vat {
+    font-size: 10px;
+  }
+
+  .receipt-vat th {
+    text-align: left;
+    border-bottom: 1px solid #000;
+  }
+
+  .receipt-vat th + th {
+    text-align: right;
+  }
+
+  .receipt-foot {
+    margin-top: 2mm;
+    font-weight: 700;
+  }
 }

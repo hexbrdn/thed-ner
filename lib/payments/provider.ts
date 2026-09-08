@@ -1,0 +1,120 @@
+/**
+ * Ödeme sağlayıcısı arayüzü.
+ *
+ * Sipariş domaini Stripe'ı **tanımaz**: yalnızca bu arayüzü bilir. Sağlayıcı
+ * değiştirilecekse (ör. Mollie) yapılacak iş yeni bir sürücü yazmaktır;
+ * sipariş akışı, veri modeli ve panel aynı kalır.
+ *
+ * Bu yüzden burada Stripe tipleri geçmez — hepsi sade veri.
+ */
+
+export type CheckoutLine = {
+  label: string;
+  detail: string;
+  /** Birim brüt fiyat (cent). Almanya'da gösterilen fiyat KDV dahildir. */
+  unitCents: number;
+  qty: number;
+};
+
+export type CheckoutRequest = {
+  orderNo: string;
+  lines: CheckoutLine[];
+  /** Teslimat + servis ücreti; tek bir satır olarak gösterilir. */
+  feeCents: number;
+  feeLabel: string;
+  /** Sunucuda hesaplanmış toplam. Doğrulama için taşınır. */
+  totalCents: number;
+  email?: string;
+  lang: "tr" | "de";
+  successUrl: string;
+  cancelUrl: string;
+  /** Oturumun geçerlilik sonu; siparişin EXPIRED olma anıyla aynı. */
+  expiresAt: Date;
+};
+
+export type CheckoutSession = {
+  /** Sağlayıcıdaki oturum kimliği; ödeme kaydında `providerRef` olur. */
+  id: string;
+  /** Müşterinin yönlendirileceği barındırmalı ödeme sayfası. */
+  url: string;
+};
+
+/** Webhook'tan çıkan, sağlayıcıdan bağımsız olay. */
+export type PaymentEvent =
+  | {
+      kind: "payment_succeeded";
+      /** Sağlayıcı olayının kimliği — idempotency anahtarı. */
+      eventId: string;
+      eventType: string;
+      orderNo: string;
+      providerRef: string;
+      amountCents: number;
+      method: string | null;
+      email: string | null;
+      raw: unknown;
+    }
+  | {
+      kind: "payment_failed" | "session_expired";
+      eventId: string;
+      eventType: string;
+      orderNo: string | null;
+      raw: unknown;
+    }
+  | { kind: "ignored"; eventId: string; eventType: string };
+
+/**
+ * Sağlayıcıdaki ödeme oturumunun anlık durumu.
+ *
+ * Webhook'un ulaşmadığı durumlarda gerçeği **sorarak** öğrenmek için gerekir:
+ * olay kaybolabilir, gecikebilir, uç yanlış yapılandırılmış olabilir. Bu
+ * okuma, webhook'un taşıdığı bilginin aynısını taşır — böylece iki yol da
+ * siparişi tıpatıp aynı şekilde kapatır.
+ */
+export type PaymentSnapshot = {
+  paid: boolean;
+  amountCents: number;
+  method: string | null;
+  email: string | null;
+  raw: unknown;
+};
+
+export type RefundResult = {
+  providerRef: string;
+  amountCents: number;
+};
+
+export interface PaymentProvider {
+  /** Ödeme kayıtlarında saklanan sağlayıcı adı ("stripe"). */
+  readonly name: string;
+
+  createCheckout(request: CheckoutRequest): Promise<CheckoutSession>;
+
+  /**
+   * Ham gövdeyi ve imzayı doğrulayıp olayı çözer.
+   *
+   * Gövde **ham metin** olmalıdır: JSON olarak ayrıştırılıp yeniden
+   * serileştirilmiş bir gövdenin imzası tutmaz.
+   */
+  parseWebhook(rawBody: string, signature: string | null): Promise<PaymentEvent>;
+
+  /**
+   * Ödeme oturumunun sağlayıcıdaki güncel durumunu okur.
+   *
+   * Oturum sağlayıcıda yoksa null döner (silinmiş test verisi, anahtar
+   * değişimi). Webhook'a ek bir güvence ağıdır, onun yerini almaz: webhook
+   * müşteri sayfaya hiç dönmese de çalışır, bu okuma ise müşteri döndüğünde.
+   */
+  fetchPayment(providerRef: string): Promise<PaymentSnapshot | null>;
+
+  /** Tam veya kısmi iade. `amountCents` verilmezse tamamı iade edilir. */
+  refund(providerRef: string, amountCents?: number): Promise<RefundResult>;
+}
+
+/** İmza doğrulanamadığında fırlatılır — çağıran taraf 400 döner. */
+export class WebhookSignatureError extends Error {
+  constructor(cause?: unknown) {
+    super("Webhook imzası doğrulanamadı.");
+    this.name = "WebhookSignatureError";
+    this.cause = cause;
+  }
+}

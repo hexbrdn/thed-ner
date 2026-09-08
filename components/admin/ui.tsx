@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { forwardRef, useEffect, useRef } from "react";
+import { useScrollLock } from "@/lib/useScrollLock";
 
 /**
  * Admin panelinin ortak parçaları.
@@ -35,11 +36,25 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`${inputBase} ${props.className ?? ""}`} />;
 }
 
-export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+/**
+ * Çok satırlı giriş.
+ *
+ * `forwardRef`: iptal penceresi "Diğer" seçildiğinde imleci doğrudan bu alana
+ * götürüyor; sarmalayıcı ref'i geçirmezse o odaklanma sessizce hiçbir şey
+ * yapmaz.
+ */
+export const TextArea = forwardRef<
+  HTMLTextAreaElement,
+  React.TextareaHTMLAttributes<HTMLTextAreaElement>
+>(function TextArea(props, ref) {
   return (
-    <textarea {...props} className={`${inputBase} resize-y min-h-[88px] ${props.className ?? ""}`} />
+    <textarea
+      {...props}
+      ref={ref}
+      className={`${inputBase} resize-y min-h-[88px] ${props.className ?? ""}`}
+    />
   );
-}
+});
 
 export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return <select {...props} className={`${inputBase} ${props.className ?? ""}`} />;
@@ -144,6 +159,8 @@ export function ConfirmDialog({
 }) {
   const cancelRef = useRef<HTMLButtonElement>(null);
 
+  useScrollLock(open);
+
   useEffect(() => {
     if (!open) return;
     cancelRef.current?.focus();
@@ -161,8 +178,11 @@ export function ConfirmDialog({
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      className="fixed inset-0 z-[80] flex items-center justify-center p-5 bg-void/85 backdrop-blur-sm"
+      className="fixed inset-0 z-[80] overflow-y-auto overscroll-contain bg-void/85 backdrop-blur-sm"
     >
+      {/* Kısa metinde ortalanır, uzun metinde kaydırılır — sadece
+          `items-center` verildiğinde uzun onay metninin altı kesiliyordu. */}
+      <div className="flex min-h-full items-center justify-center p-5">
       <div className="w-full max-w-[440px] ember-surface border border-line p-7">
         <h2 className="font-display font-extrabold text-xl text-bone mb-3">{title}</h2>
         <p className="text-smoke text-sm leading-relaxed mb-7">{message}</p>
@@ -180,6 +200,7 @@ export function ConfirmDialog({
             {busy ? "SİLİNİYOR…" : confirmLabel}
           </Button>
         </div>
+      </div>
       </div>
     </div>
   );

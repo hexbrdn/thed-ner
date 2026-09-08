@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -14,7 +15,9 @@ function seeded(n: number) {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 
-const SPARKS = Array.from({ length: 28 }, (_, i) => {
+// Sekiz kıvılcım, yirmi sekiz değil: köz hissi bir avuç parçacıkla da kuruluyor,
+// kalabalığı ise sayfayı okunmaz kılıyordu.
+const SPARKS = Array.from({ length: 8 }, (_, i) => {
   const r = (k: number) => seeded(i * 11 + k);
   return {
     left: 18 + r(1) * 64,
@@ -31,10 +34,7 @@ const SPARKS = Array.from({ length: 28 }, (_, i) => {
 export default function Hero() {
   const { t } = useLanguage();
   const root = useRef<HTMLDivElement>(null);
-  const bgWrap = useRef<HTMLDivElement>(null);
   const spitWrap = useRef<HTMLDivElement>(null);
-  const gridLayer = useRef<HTMLDivElement>(null);
-  const titleBack = useRef<HTMLDivElement>(null);
   const titleFront = useRef<HTMLDivElement>(null);
   const titleGroup = useRef<HTMLDivElement>(null);
 
@@ -67,15 +67,20 @@ export default function Hero() {
       });
     }, root);
 
-    // Fare parallaksı
-    let movers: { set: (v: number) => void; axis: "x" | "y"; amp: number }[] = [];
+    /*
+     * Fare parallaksı: imleç hero üzerinde gezerken katmanlar farklı
+     * genliklerde ters yöne kayar, böylece şiş öne, başlıklar arkaya düşer.
+     * Genlikler küçük tutuluyor — amaç derinlik hissi, savrulma değil.
+     * `prefers-reduced-motion` açıksa hiç bağlanmaz; imleç alandan çıkınca
+     * her katman sıfıra döner.
+     */
+    const movers: { set: (v: number) => void; axis: "x" | "y"; amp: number }[] = [];
     if (!reduced) {
-      const mk = (el: HTMLElement | null, amp: number) => {
-        if (!el) return;
-        movers.push({ set: gsap.quickTo(el, "x", { duration: 0.9, ease: "power3.out" }), axis: "x", amp });
-        movers.push({ set: gsap.quickTo(el, "y", { duration: 0.9, ease: "power3.out" }), axis: "y", amp });
+      const mk = (target: HTMLElement | null, amp: number) => {
+        if (!target) return;
+        movers.push({ set: gsap.quickTo(target, "x", { duration: 0.9, ease: "power3.out" }), axis: "x", amp });
+        movers.push({ set: gsap.quickTo(target, "y", { duration: 0.9, ease: "power3.out" }), axis: "y", amp });
       };
-      mk(gridLayer.current, 0.02);
       mk(titleGroup.current, 0.04);
       mk(titleFront.current, 0.04);
       mk(spitWrap.current, 0.08);
@@ -89,7 +94,7 @@ export default function Hero() {
       const ny = (e.clientY - r.top) / r.height - 0.5;
       for (const m of movers) {
         const n = m.axis === "x" ? nx : ny;
-        m.set(-n * r[m.axis === "x" ? "width" : "height"] * m.amp);
+        m.set(-n * (m.axis === "x" ? r.width : r.height) * m.amp);
       }
     };
     const onLeave = () => movers.forEach((m) => m.set(0));
@@ -124,7 +129,7 @@ export default function Hero() {
       className="relative min-h-[100svh] w-full overflow-hidden bg-void flex items-center justify-center pt-16 md:pt-0"
     >
       {/* arka plan sahnesi */}
-      <div ref={bgWrap} className="absolute inset-0">
+      <div className="absolute inset-0">
         <Image
           src="/assets/hero-fire.webp"
           alt=""
@@ -144,20 +149,16 @@ export default function Hero() {
         className="hero-fire-pulse absolute inset-0 pointer-events-none"
         style={{ background: "radial-gradient(ellipse 58% 62% at 50% 54%, rgba(255,70,18,0.48) 0%, rgba(255,194,71,0.22) 32%, rgba(255,61,18,0.10) 52%, transparent 76%)" }}
       />
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{ background: "linear-gradient(90deg, #070604 0%, rgba(7,6,4,0.58) 22%, transparent 45%, transparent 55%, rgba(7,6,4,0.58) 78%, #070604 100%)" }}
-      />
+      {/* Dikey vinyet.
+          Bu katman dekoratif değil işlevsel: üstte navbarın arkasını
+          koyulaştırır, altta hero'yu sayfa zeminine eritir. Kaldırılırsa bir
+          sonraki bölümle arasında sert bir kesik kalır.
+
+          Yanlardaki 90deg vinyet, alttaki bulanık gökkuşağı şeridi ve teknik
+          ızgara deseni kaldırıldı — üçü de yalnızca katman ekliyordu. */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{ background: "linear-gradient(180deg, rgba(7,6,4,0.88) 0%, transparent 30%, transparent 55%, #070604 100%)" }}
-      />
-      <div className="absolute inset-x-0 bottom-0 h-36 pointer-events-none bg-[linear-gradient(90deg,#FF3D12,#FFC247,#FF7A1A,#FF3D12)] opacity-45 blur-2xl" />
-
-      {/* teknik grid */}
-      <div
-        ref={gridLayer}
-        className="absolute inset-[-4%] opacity-[0.07] pointer-events-none [background-image:linear-gradient(#FFF6E8_1px,transparent_1px),linear-gradient(90deg,#FFF6E8_1px,transparent_1px)] [background-size:48px_48px]"
       />
 
       {/* köz kıvılcımları */}
@@ -184,15 +185,13 @@ export default function Hero() {
         ))}
       </div>
 
-      <div className="scanline pointer-events-none absolute inset-x-0 h-40 bg-gradient-to-b from-flame/10 to-transparent" />
-
       {/* Katmanlama: arka başlık */}
       <div ref={titleGroup} className="absolute inset-0 z-10 pointer-events-none">
         {/* Bu satır dile göre boş olabilir; boşken hiç basılmaz ki
             şişin arkasında ölçü kaplayan boş bir başlık kalmasın. */}
         {t.hero.titleLine1 ? (
-          <div ref={titleBack} className="absolute inset-x-0 top-[28%] text-center px-6">
-            <h1 className="font-display font-black leading-[0.9] text-[11vw] md:text-[7.5vw] text-bone">
+          <div className="absolute inset-x-0 top-[28%] text-center px-6">
+            <h1 className="hero-title font-display font-black text-bone">
               <span className="hero-title-line block">{t.hero.titleLine1}</span>
             </h1>
           </div>
@@ -220,7 +219,7 @@ export default function Hero() {
           {t.hero.eyebrowTag}
         </p>
         <div className="absolute inset-x-0 top-[52%] text-center px-6">
-          <h2 className="font-display font-black leading-[0.9] text-[18vw] md:text-[13vw] text-bone drop-shadow-[0_18px_40px_rgba(0,0,0,0.8)] mb-2">
+          <h2 className="hero-title font-display font-black text-bone drop-shadow-[0_18px_40px_rgba(0,0,0,0.8)] mb-2">
             <span className="hero-title-line block">{t.hero.titleLine2}</span>
           </h2>
           <p className="font-display font-semibold text-lg md:text-2xl text-amber drop-shadow-md">
@@ -263,10 +262,18 @@ export default function Hero() {
         <p className="max-w-xl mx-auto text-xs md:text-sm text-smoke/90 leading-relaxed font-body">
           {t.hero.description}
         </p>
-        <div className="flex justify-center gap-4">
+        {/* Birincil eylem sipariş vermek: düğme doğrudan menüye götürür.
+            Konum/yol tarifi ikincil eylem olarak yanında durur. */}
+        <div className="flex flex-wrap justify-center gap-3">
+          <Link
+            href="/speisekarte"
+            className="focus-ring inline-block bg-flame-gradient text-void font-display font-extrabold px-6 py-2.5 text-xs tracking-wider uppercase hover:brightness-110 transition-all"
+          >
+            {t.nav.orderNow}
+          </Link>
           <a
             href="#filialen"
-            className="focus-ring inline-block bg-flame-gradient text-void font-display font-extrabold px-6 py-2.5 text-xs tracking-wider uppercase hover:brightness-110 transition-all"
+            className="focus-ring inline-block border border-line text-bone font-display font-semibold px-6 py-2.5 text-xs tracking-wider uppercase hover:border-amber hover:text-amber transition-colors"
           >
             {t.hero.findBranchBtn}
           </a>

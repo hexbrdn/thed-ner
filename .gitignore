@@ -9,3 +9,12 @@ next-env.d.ts
 # katalogun kendisi repoda tutulur (salt okunur ortamlarda tohum verisi olarak
 # gerekli); yalnızca atomik yazmanın geçici dosyaları yok sayılır
 data/store/*.tmp
+
+# ortam dosyalari
+.env
+.env*.local
+
+# bun kullaniliyor: npm lockfile'i yanlislikla olusursa yok say
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

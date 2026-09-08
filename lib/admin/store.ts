@@ -1,16 +1,21 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
-import { SPEISEKARTE, type MenuSection } from "@/data/speisekarte";
-import { BUILDER_BASE_PRODUCT_ID, BUILDER_GROUPS_SEED } from "@/data/menu";
-import { toCents } from "@/lib/money";
+import { revalidateTag, unstable_cache } from "next/cache";
+import { prisma } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
+import type { MenuSection } from "@/data/speisekarte";
+import { BUILDER_GROUPS_SEED } from "@/data/menu";
+import { toCents, toEuro } from "@/lib/money";
+import { allergenNotice } from "@/lib/legal/allergens";
+import { grundpreisLabel } from "@/lib/legal/grundpreis";
 import {
   CATALOG_VERSION,
   effectivePrice,
   formatPrice,
-  parsePrice,
   slugify,
+  type Additive,
+  type Allergen,
   type BuilderConfig,
   type BuilderGroup,
+  type BuilderGroupId,
   type BuilderOption,
   type Catalog,
   type Category,
@@ -20,181 +25,112 @@ import {
 } from "./types";
 
 /**
- * Dosya tabanlı katalog deposu.
+ * Katalog deposu — PostgreSQL (Prisma).
  *
- * Projede veritabanı yok; tüm okuma/yazma bu modülde toplanmıştır. Başka bir
- * kalıcı katmana (Postgres, SQLite, Supabase …) geçilecekse yalnızca bu dosya
- * değiştirilir — API route'ları ve UI aynı kalır.
+ * Bu modül veri katmanının **tek kapısıdır**: API route'ları ve sayfalar
+ * doğrudan Prisma çağırmaz, buradaki fonksiyonları kullanır. Depo dosya
+ * tabanlıyken de kural buydu; kaynak değişti, sözleşme değişmedi.
  *
- * NOT: Serverless platformlarda (Vercel, Netlify) dosya sistemi salt okunurdur.
- * Bu yüzden `catalog.json` repoda tutulur ve okuma her zaman çalışır; yazma
- * denemesi ise `StoreWriteError` ile başarısız olur ve admin arayüzüne anlamlı
- * bir mesaj döner. Kalıcı yazma için Node sunucusu (next start) veya gerçek bir
- * veritabanı gerekir.
+ * Birim dönüşümü burada olur:
+ *  - Veritabanında fiyatlar **cent (Int)** tutulur — kayan noktalı toplama
+ *    sipariş tutarında bir cent'lik sapmalara yol açtığı için `Float` yok.
+ *  - Bu modülün dışarı verdiği alan modeli (`lib/admin/types.ts`) fiyatları
+ *    **Euro (number)** olarak taşımaya devam eder; admin arayüzü ve mevcut
+ *    gösterim mantığı bu birimle çalışıyor. Çeviri `toCents` / `toEuro` ile
+ *    yalnızca bu dosyanın sınırında yapılır.
  */
 
-const STORE_DIR = path.join(process.cwd(), "data", "store");
-const STORE_FILE = path.join(STORE_DIR, "catalog.json");
+/* ------------------------------------------------------------ eşleyiciler */
 
-/** Eşzamanlı isteklerde read-modify-write kaybını önleyen basit kuyruk. */
-let writeChain: Promise<unknown> = Promise.resolve();
+type ProductRow = Prisma.ProductGetPayload<{ include: { variants: true } }>;
+type CategoryRow = Prisma.CategoryGetPayload<object>;
+type BuilderGroupRow = Prisma.BuilderGroupGetPayload<{ include: { options: true } }>;
+type SettingsRow = Prisma.SettingsGetPayload<object>;
 
-function seed(): Catalog {
-  const categories: Category[] = SPEISEKARTE.map((section, i) => ({
-    id: section.id,
-    name: section.title,
-    nameTr: section.titleTr ?? "",
-    note: section.note ?? "",
-    noteTr: section.noteTr ?? "",
-    sortOrder: i,
-  }));
+const productInclude = {
+  variants: { orderBy: { sortOrder: "asc" } },
+} satisfies Prisma.ProductInclude;
 
-  const products: Product[] = SPEISEKARTE.flatMap((section, ci) =>
-    section.items.map((item, ii) => {
-      // Tek fiyatlı üründe `price`, çok boylu üründe `variants` dolu gelir.
-      const variants = (item.variants ?? [])
-        .map((v) => ({ size: v.size, price: parsePrice(v.price) }))
-        .filter((v): v is { size: string; price: number } => v.price !== null);
-
-      const base = item.price ? parsePrice(item.price) : null;
-
-      return {
-        // Aynı ad birden çok kategoride/satırda geçebiliyor (Pide, Lahmacun) →
-        // numara ve sırayla nitele ki id benzersiz kalsın.
-        id: `${section.id}--${slugify(item.name) || "urun"}-${item.no ?? ii + 1}`,
-        no: item.no ?? "",
-        name: item.name,
-        nameTr: item.nameTr ?? "",
-        description: item.desc ?? "",
-        descriptionTr: item.descTr ?? "",
-        categoryId: section.id,
-        price: base ?? variants[0]?.price ?? 0,
-        discountPrice: null,
-        image: null,
-        active: true,
-        inStock: true,
-        showOnHome: true,
-        variants,
-        sortOrder: ci * 1000 + ii,
-      } satisfies Product;
-    })
-  );
-
+function toProduct(row: ProductRow): Product {
   return {
-    version: CATALOG_VERSION,
-    categories,
-    products,
-    settings: defaultSettings(),
-    builder: defaultBuilder(),
+    id: row.id,
+    no: row.no,
+    name: row.name,
+    nameTr: row.nameTr,
+    description: row.description,
+    descriptionTr: row.descriptionTr,
+    categoryId: row.categoryId,
+    price: toEuro(row.priceCents),
+    discountPrice: row.discountPriceCents === null ? null : toEuro(row.discountPriceCents),
+    image: row.image,
+    active: row.active,
+    inStock: row.inStock,
+    showOnHome: row.showOnHome,
+    featured: row.featured,
+    variants: row.variants
+      .slice()
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((v) => ({ size: v.size, price: toEuro(v.priceCents) })),
+    sortOrder: row.sortOrder,
+    vatRate: row.vatRate,
+    allergens: row.allergens as Allergen[],
+    additives: row.additives as Additive[],
+    allergenInfoConfirmed: row.allergenInfoConfirmed,
+    isPerishable: row.isPerishable,
   };
 }
 
-/**
- * Servis ücreti varsayılanı.
- *
- * İşletme kendi tanıtım metinlerinde "adrese teslimat yok, gel-al" diyor;
- * bu yüzden varsayılan ücret 0. Paket servis başlatılırsa panelden açılır.
- */
+function toCategory(row: CategoryRow): Category {
+  return {
+    id: row.id,
+    name: row.name,
+    nameTr: row.nameTr,
+    note: row.note,
+    noteTr: row.noteTr,
+    sortOrder: row.sortOrder,
+  };
+}
+
 function defaultSettings(): Settings {
   return { serviceFee: 0, freeServiceOver: 0 };
 }
 
-function defaultBuilder(): BuilderConfig {
+function toSettings(row: SettingsRow | null): Settings {
+  if (!row) return defaultSettings();
   return {
-    baseProductId: BUILDER_BASE_PRODUCT_ID,
-    fallbackBasePrice: 0,
-    groups: BUILDER_GROUPS_SEED,
+    serviceFee: toEuro(row.serviceFeeCents),
+    freeServiceOver: toEuro(row.freeServiceOverCents),
   };
 }
 
 /**
- * Diskten okunan kaydı güncel şemaya tamamlar.
- *
- * Elle düzenlenmiş ya da eski sürümden kalmış kayıtlarda eksik alan olabilir;
- * burada varsayılanları verilir, böylece UI hiçbir zaman `undefined` görmez.
- */
-function normalize(catalog: Catalog): Catalog {
-  const categories = (catalog.categories as Partial<Category>[]).map((c) => ({
-    id: String(c.id),
-    name: c.name ?? "",
-    nameTr: c.nameTr ?? "",
-    note: c.note ?? "",
-    noteTr: c.noteTr ?? "",
-    sortOrder: c.sortOrder ?? 0,
-  }));
-
-  const products = (catalog.products as Partial<Product>[]).map((p) => ({
-    id: String(p.id),
-    no: p.no ?? "",
-    name: p.name ?? "",
-    nameTr: p.nameTr ?? "",
-    description: p.description ?? "",
-    descriptionTr: p.descriptionTr ?? "",
-    categoryId: p.categoryId ?? "",
-    price: p.price ?? 0,
-    discountPrice: p.discountPrice ?? null,
-    image: p.image ?? null,
-    active: p.active ?? true,
-    inStock: p.inStock ?? true,
-    // Eski kayıtlarda alan yok: varsayılan görünür olsun ki ürün kaybolmasın.
-    showOnHome: p.showOnHome ?? true,
-    variants: p.variants ?? [],
-    sortOrder: p.sortOrder ?? 0,
-  }));
-
-  return {
-    version: CATALOG_VERSION,
-    categories,
-    products,
-    settings: normalizeSettings(catalog.settings),
-    builder: normalizeBuilder(catalog.builder),
-  };
-}
-
-function num(value: unknown, fallback: number): number {
-  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : fallback;
-}
-
-function normalizeSettings(raw: Partial<Settings> | undefined): Settings {
-  const base = defaultSettings();
-  if (!raw || typeof raw !== "object") return base;
-  return {
-    serviceFee: num(raw.serviceFee, base.serviceFee),
-    freeServiceOver: num(raw.freeServiceOver, base.freeServiceOver),
-  };
-}
-
-/**
- * Yapılandırıcı ayarını tamamlar.
+ * Yapılandırıcı görünümü.
  *
  * Grup **kimlikleri ve sırası** kod tarafından belirlenir (arayüz onlara göre
- * kurulu); panelden değiştirilen şey seçeneklerin ek ücreti/metnidir. Depoda
- * eksik grup varsa tohumdaki hâli kullanılır, böylece bölüm hiç boş kalmaz.
+ * kurulu); panelden değiştirilen şey seçeneklerin metni ve ek ücretidir.
+ * Depoda karşılığı olmayan grup için tohumdaki hâli kullanılır, böylece bölüm
+ * hiçbir zaman boş kalmaz.
  */
-function normalizeBuilder(raw: Partial<BuilderConfig> | undefined): BuilderConfig {
-  const base = defaultBuilder();
-  if (!raw || typeof raw !== "object") return base;
+function toBuilder(groups: BuilderGroupRow[], settings: SettingsRow | null): BuilderConfig {
+  const stored = new Map(groups.map((g) => [g.id, g] as const));
 
-  const stored = new Map(
-    (Array.isArray(raw.groups) ? raw.groups : []).map((g) => [g?.id, g] as const)
-  );
-
-  const groups: BuilderGroup[] = base.groups.map((seedGroup) => {
+  const resolved: BuilderGroup[] = BUILDER_GROUPS_SEED.map((seedGroup) => {
     const found = stored.get(seedGroup.id);
-    if (!found || !Array.isArray(found.options) || found.options.length === 0) return seedGroup;
+    if (!found || found.options.length === 0) return seedGroup;
 
     const options: BuilderOption[] = found.options
-      .filter((o): o is BuilderOption => Boolean(o) && typeof o.id === "string")
+      .slice()
+      .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((o) => {
         const seedOption = seedGroup.options.find((x) => x.id === o.id);
         return {
           id: o.id,
-          label: o.label ?? seedOption?.label ?? o.id,
-          labelDe: o.labelDe ?? seedOption?.labelDe ?? o.label ?? o.id,
-          desc: o.desc ?? seedOption?.desc ?? "",
-          descDe: o.descDe ?? seedOption?.descDe ?? "",
-          price: num(o.price, 0),
-          kcal: num(o.kcal, seedOption?.kcal ?? 0),
+          label: o.label || seedOption?.label || o.id,
+          labelDe: o.labelDe || seedOption?.labelDe || o.label || o.id,
+          desc: o.desc || seedOption?.desc || "",
+          descDe: o.descDe || seedOption?.descDe || "",
+          price: toEuro(o.priceCents),
+          kcal: o.kcal,
           image: o.image ?? seedOption?.image ?? null,
         };
       });
@@ -203,83 +139,66 @@ function normalizeBuilder(raw: Partial<BuilderConfig> | undefined): BuilderConfi
   });
 
   return {
-    baseProductId:
-      typeof raw.baseProductId === "string" && raw.baseProductId
-        ? raw.baseProductId
-        : raw.baseProductId === null
-          ? null
-          : base.baseProductId,
-    fallbackBasePrice: num(raw.fallbackBasePrice, base.fallbackBasePrice),
-    groups,
+    baseProductId: settings?.builderBaseProductId ?? null,
+    fallbackBasePrice: toEuro(settings?.builderFallbackPriceCents ?? 0),
+    groups: resolved,
   };
-}
-
-async function readCatalog(): Promise<Catalog> {
-  try {
-    const raw = await fs.readFile(STORE_FILE, "utf8");
-    const parsed = JSON.parse(raw) as Partial<Catalog>;
-    if (!Array.isArray(parsed.categories) || !Array.isArray(parsed.products)) {
-      throw new Error("catalog.json beklenen şekilde değil");
-    }
-    // v1 gerçek karta öncesi demo menüsü: içeriği artık geçerli değil, yeniden kur.
-    if ((parsed.version ?? 1) < 2) throw new Error("catalog.json eski sürüm");
-
-    // v2 → v3 göçü: ürün ve kategoriler olduğu gibi korunur, yalnızca yeni
-    // alanlar (settings/builder) varsayılanlarıyla tamamlanır. Admin panelinde
-    // yapılmış fiyat/durum değişiklikleri sürüm yükseltmesinde kaybolmaz.
-    return normalize(parsed as Catalog);
-  } catch {
-    // dosya yok veya bozuk: mevcut menü verisinden yeniden kur.
-    // Kalıcılaştırma en iyi çaba: salt okunur ortamda yazma başarısız olsa da
-    // katalog bellekte kullanılabilir olmalı, sayfa çökmemeli.
-    const fresh = seed();
-    try {
-      await writeCatalog(fresh);
-    } catch {
-      // yoksay: okuma yolu yazmaya bağlı değil
-    }
-    return fresh;
-  }
-}
-
-/** Yazma reddedildiğinde (ör. salt okunur serverless dosya sistemi) fırlatılır. */
-export class StoreWriteError extends Error {
-  constructor(cause: unknown) {
-    super(
-      "Katalog kaydedilemedi: bu ortamda dosya sistemi salt okunur. " +
-        "Değişiklikleri kalıcı kılmak için kalıcı bir veri katmanı gerekiyor."
-    );
-    this.name = "StoreWriteError";
-    this.cause = cause;
-  }
-}
-
-async function writeCatalog(catalog: Catalog): Promise<void> {
-  try {
-    await fs.mkdir(STORE_DIR, { recursive: true });
-    const tmp = `${STORE_FILE}.${process.pid}.tmp`;
-    await fs.writeFile(tmp, JSON.stringify(catalog, null, 2), "utf8");
-    // atomik değiştirme: yazma yarıda kalırsa mevcut dosya bozulmaz
-    await fs.rename(tmp, STORE_FILE);
-  } catch (error) {
-    throw new StoreWriteError(error);
-  }
-}
-
-/** Okuma-değiştirme-yazma işlemlerini sıraya alır. */
-function transaction<T>(fn: (catalog: Catalog) => Promise<T> | T): Promise<T> {
-  const next = writeChain.then(async () => {
-    const catalog = await readCatalog();
-    return fn(catalog);
-  });
-  writeChain = next.catch(() => undefined);
-  return next;
 }
 
 /* ------------------------------------------------------------------ okuma */
 
+/**
+ * Katalog önbelleği.
+ *
+ * Menü, fiyat ve yapılandırıcı ayarları **nadiren** değişir ama neredeyse her
+ * istekte okunur: ana sayfa, kart, sepet fiyatlaması, sipariş akışı. Her
+ * okumanın veritabanına gitmesi, uygulamanın hızını veritabanına olan ağ
+ * gecikmesine bağlar — havuzlanmış bağlantı üzerinden sorgu başına yüzlerce
+ * milisaniye eder ve sayfa birkaç saniyede açılır.
+ *
+ * Bu yüzden katalog bir kez okunur ve etiketli önbellekte tutulur. Bayatlık
+ * riski yok: panelden yapılan her yazma `invalidateCatalog()` çağırır ve
+ * önbellek o anda düşer. `revalidate` yalnızca son çare — veritabanı uygulama
+ * dışından (seed, Prisma Studio) değiştirilirse en geç bu süre sonunda
+ * yakalanır.
+ */
+const CATALOG_TAG = "catalog";
+const CATALOG_MAX_AGE_SECONDS = 300;
+
+async function loadCatalog(): Promise<Catalog> {
+  const [categories, products, settings, groups] = await Promise.all([
+    prisma.category.findMany({ orderBy: { sortOrder: "asc" } }),
+    prisma.product.findMany({ orderBy: { sortOrder: "asc" }, include: productInclude }),
+    prisma.settings.findUnique({ where: { id: 1 } }),
+    prisma.builderGroup.findMany({ orderBy: { sortOrder: "asc" }, include: { options: true } }),
+  ]);
+
+  return {
+    version: CATALOG_VERSION,
+    categories: categories.map(toCategory),
+    products: products.map(toProduct),
+    settings: toSettings(settings),
+    builder: toBuilder(groups, settings),
+  };
+}
+
+const cachedCatalog = unstable_cache(loadCatalog, ["catalog"], {
+  tags: [CATALOG_TAG],
+  revalidate: CATALOG_MAX_AGE_SECONDS,
+});
+
 export async function getCatalog(): Promise<Catalog> {
-  return readCatalog();
+  return cachedCatalog();
+}
+
+/**
+ * Katalog önbelleğini düşürür.
+ *
+ * Katalogu değiştiren **her** yazma bunu çağırmak zorundadır; unutulan bir
+ * çağrı, panelde değişmiş ama müşteride eski görünen bir fiyat demektir.
+ */
+export function invalidateCatalog(): void {
+  revalidateTag(CATALOG_TAG);
 }
 
 /** Ürün müşteriye gösterilir mi: üç anahtarın da açık olması gerekir. */
@@ -292,13 +211,15 @@ export function isVisible(product: Product): boolean {
  * gruplanmış. Hiç ürünü kalmayan kategori listeye girmez.
  */
 export async function getPublicMenu(): Promise<PublicCategory[]> {
-  const { categories, products } = await readCatalog();
-  return categories
-    .slice()
-    .sort((a, b) => a.sortOrder - b.sortOrder)
+  // Görünürlük süzgeci veritabanında değil burada uygulanır: katalog zaten
+  // önbellekte, ayrıca sorgu atmanın karşılığı yok. `isVisible` ile aynı
+  // kuralı paylaşır, dolayısıyla iki yerde ayrışma ihtimali yoktur.
+  const catalog = await getCatalog();
+
+  return catalog.categories
     .map((cat) => ({
       ...cat,
-      products: products
+      products: catalog.products
         .filter((p) => p.categoryId === cat.id && isVisible(p))
         .sort((a, b) => a.sortOrder - b.sortOrder),
     }))
@@ -319,123 +240,258 @@ export async function getMenuSections(): Promise<MenuSection[]> {
     titleTr: cat.nameTr || undefined,
     note: cat.note || undefined,
     noteTr: cat.noteTr || undefined,
-    items: cat.products.map((p) => ({
-      no: p.no || undefined,
-      name: p.name,
-      nameTr: p.nameTr || undefined,
-      desc: p.description || undefined,
-      descTr: p.descriptionTr || undefined,
-      image: p.image ?? undefined,
-      // Varyasyonlu üründe satırda tek fiyat değil, boy listesi gösterilir.
-      price:
-        p.variants.length > 0
-          ? undefined
-          : formatPrice(p.discountPrice ?? p.price),
-      oldPrice:
-        p.variants.length > 0 || p.discountPrice === null
-          ? undefined
-          : formatPrice(p.price),
-      variants:
-        p.variants.length > 0
-          ? p.variants.map((v) => ({ size: v.size, price: formatPrice(v.price) }))
-          : undefined,
-    })),
+    items: cat.products.map((p) => {
+      return {
+        // Kartanın sepete ekleyebilmesi için tek gereken alan. Fiyat değil
+        // kimlik taşınır: tutarı `/api/menu/quote` hesaplar.
+        productId: p.id,
+        no: p.no || undefined,
+        name: p.name,
+        nameTr: p.nameTr || undefined,
+        desc: p.description || undefined,
+        descTr: p.descriptionTr || undefined,
+        image: p.image ?? undefined,
+        // Varyasyonlu üründe satırda tek fiyat değil, boy listesi gösterilir.
+        price: p.variants.length > 0 ? undefined : formatPrice(p.discountPrice ?? p.price),
+        oldPrice:
+          p.variants.length > 0 || p.discountPrice === null ? undefined : formatPrice(p.price),
+        variants:
+          p.variants.length > 0
+            ? p.variants.map((v) => ({
+                size: v.size,
+                price: formatPrice(v.price),
+                grundpreis: grundpreisLabel(v.size, toCents(v.price)) ?? undefined,
+              }))
+            : undefined,
+        // Tek fiyatlı üründe hacim bilgisi taşıyan bir etiket yoktur (boy
+        // yalnızca varyantta bulunur), dolayısıyla temel fiyat hesaplanamaz.
+        // Uydurulmuş bir litre değeri göstermektense hiç göstermemek doğrudur.
+        // LMIV: bilgi girilmemiş ürün "madde yok" diye gösterilemez.
+        allergens: allergenNotice({
+          allergens: p.allergens,
+          additives: p.additives,
+          allergenInfoConfirmed: p.allergenInfoConfirmed,
+        }),
+      };
+    }),
   }));
 }
 
 export async function getStats() {
-  const { categories, products } = await readCatalog();
+  const { categories: categoryList, products } = await getCatalog();
+  const categories = categoryList.length;
+
   return {
     totalProducts: products.length,
     activeProducts: products.filter((p) => p.active).length,
     passiveProducts: products.filter((p) => !p.active).length,
     outOfStock: products.filter((p) => !p.inStock).length,
     hiddenFromMenu: products.filter((p) => p.active && !p.showOnHome).length,
-    visibleProducts: products.filter(isVisible).length,
+    visibleProducts: products.filter((p) => p.active && p.inStock && p.showOnHome).length,
     discounted: products.filter((p) => p.discountPrice !== null).length,
-    categories: categories.length,
+    categories,
+    /**
+     * Alerjen bilgisi ne girilmiş ne de "yok" diye onaylanmış ürünler.
+     * LMIV Art. 14 gereği bu ürünler eksik bilgiyle satılıyor demektir.
+     */
+    missingLegalInfo: products.filter(
+      (p) => p.allergens.length === 0 && !p.allergenInfoConfirmed
+    ).length,
   };
+}
+
+/**
+ * "Öne çıkanlar" vitrini — ana sayfada ve karta sayfasının en üstünde.
+ *
+ * Liste **admin panelinden** yönetilir: panelde "Öne çıkar" işaretlenen
+ * ürünler, menü sırasına göre burada görünür. Menüden düşmüş bir ürün
+ * (pasif / tükenmiş / menüde gizli) işaretli olsa bile vitrine girmez —
+ * satılamayan ürünü vitrinde göstermek müşteriyi boşuna uğraştırır.
+ *
+ * Hiçbir ürün işaretlenmemişse liste boş kalmaz, sıraya göre doldurulur:
+ * yeni kurulan bir sitede vitrin bölümünün boş görünmesindense makul bir
+ * varsayılan göstermek daha iyidir. İşletmeci ilk ürünü işaretlediği anda
+ * kontrol tamamen ona geçer.
+ */
+export async function getFeaturedProducts(limit = 3): Promise<Product[]> {
+  const catalog = await getCatalog();
+  const visible = catalog.products
+    .filter(isVisible)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const chosen = visible.filter((p) => p.featured);
+  if (chosen.length > 0) return chosen.slice(0, limit);
+
+  // Varsayılan: görseli olan ürünler öne alınır, kalanı sırayla tamamlar.
+  const withImage = visible.filter((p) => p.image);
+  return [...withImage, ...visible.filter((p) => !p.image)].slice(0, limit);
 }
 
 /* ------------------------------------------------------------------ yazma */
 
-export type ProductInput = Omit<Product, "id" | "sortOrder">;
+/**
+ * Yeni ürün girdisi.
+ *
+ * Yasal alanlar (KDV oranı, alerjen, katkı maddesi) isteğe bağlıdır: mevcut
+ * çağrı yerleri bunları göndermiyor ve varsayılanla oluşuyor. Panel bu alanları
+ * gönderdiğinde değerler olduğu gibi yazılır.
+ */
+export type ProductInput = Omit<
+  Product,
+  "id" | "sortOrder" | "vatRate" | "allergens" | "additives" | "allergenInfoConfirmed" | "isPerishable"
+> &
+  Partial<
+    Pick<
+      Product,
+      "vatRate" | "allergens" | "additives" | "allergenInfoConfirmed" | "isPerishable"
+    >
+  >;
 
 /** Güncellemede sıra da değiştirilebilir; oluşturmada sıra otomatik verilir. */
 export type ProductPatch = Partial<ProductInput & Pick<Product, "sortOrder">>;
 
-export async function createProduct(
-  input: ProductInput & { id: string }
-): Promise<Product> {
-  return transaction(async (catalog) => {
-    let id = input.id;
-    let n = 2;
-    while (catalog.products.some((p) => p.id === id)) id = `${input.id}-${n++}`;
+/** Alan modelindeki ürün alanlarını veritabanı sütunlarına çevirir. */
+function productData(patch: ProductPatch) {
+  const data: Prisma.ProductUncheckedUpdateInput = {};
 
-    const maxSort = catalog.products.reduce((m, p) => Math.max(m, p.sortOrder), 0);
-    const product: Product = { ...input, id, sortOrder: maxSort + 1 };
-    catalog.products.push(product);
-    await writeCatalog(catalog);
-    return product;
-  });
+  if (patch.no !== undefined) data.no = patch.no;
+  if (patch.name !== undefined) data.name = patch.name;
+  if (patch.nameTr !== undefined) data.nameTr = patch.nameTr;
+  if (patch.description !== undefined) data.description = patch.description;
+  if (patch.descriptionTr !== undefined) data.descriptionTr = patch.descriptionTr;
+  if (patch.categoryId !== undefined) data.categoryId = patch.categoryId;
+  if (patch.price !== undefined) data.priceCents = toCents(patch.price);
+  if (patch.discountPrice !== undefined) {
+    data.discountPriceCents = patch.discountPrice === null ? null : toCents(patch.discountPrice);
+  }
+  if (patch.image !== undefined) data.image = patch.image;
+  if (patch.active !== undefined) data.active = patch.active;
+  if (patch.inStock !== undefined) data.inStock = patch.inStock;
+  if (patch.showOnHome !== undefined) data.showOnHome = patch.showOnHome;
+  if (patch.featured !== undefined) data.featured = patch.featured;
+  if (patch.sortOrder !== undefined) data.sortOrder = patch.sortOrder;
+  if (patch.vatRate !== undefined) data.vatRate = patch.vatRate;
+  if (patch.allergens !== undefined) data.allergens = patch.allergens;
+  if (patch.additives !== undefined) data.additives = patch.additives;
+  if (patch.allergenInfoConfirmed !== undefined) {
+    data.allergenInfoConfirmed = patch.allergenInfoConfirmed;
+  }
+  if (patch.isPerishable !== undefined) data.isPerishable = patch.isPerishable;
+
+  return data;
 }
 
-export async function updateProduct(
-  id: string,
-  patch: ProductPatch
-): Promise<Product | null> {
-  return transaction(async (catalog) => {
-    const index = catalog.products.findIndex((p) => p.id === id);
-    if (index === -1) return null;
-    const updated = { ...catalog.products[index], ...patch };
-    catalog.products[index] = updated;
-    await writeCatalog(catalog);
-    return updated;
+/** Aynı kimlik varsa sonuna sayı ekleyerek benzersizini bulur. */
+async function uniqueProductId(base: string): Promise<string> {
+  let id = base;
+  let n = 2;
+  while (await prisma.product.findUnique({ where: { id }, select: { id: true } })) {
+    id = `${base}-${n++}`;
+  }
+  return id;
+}
+
+export async function createProduct(input: ProductInput & { id: string }): Promise<Product> {
+  const id = await uniqueProductId(input.id);
+  const max = await prisma.product.aggregate({ _max: { sortOrder: true } });
+
+  const row = await prisma.product.create({
+    data: {
+      id,
+      no: input.no,
+      name: input.name,
+      nameTr: input.nameTr,
+      description: input.description,
+      descriptionTr: input.descriptionTr,
+      categoryId: input.categoryId,
+      priceCents: toCents(input.price),
+      discountPriceCents: input.discountPrice === null ? null : toCents(input.discountPrice),
+      image: input.image,
+      active: input.active,
+      inStock: input.inStock,
+      showOnHome: input.showOnHome,
+      sortOrder: (max._max.sortOrder ?? 0) + 1,
+      vatRate: input.vatRate ?? 7,
+      allergens: input.allergens ?? [],
+      additives: input.additives ?? [],
+      allergenInfoConfirmed: input.allergenInfoConfirmed ?? false,
+      isPerishable: input.isPerishable ?? true,
+      variants: {
+        create: input.variants.map((v, i) => ({
+          size: v.size,
+          priceCents: toCents(v.price),
+          sortOrder: i,
+        })),
+      },
+    },
+    include: productInclude,
   });
+
+  invalidateCatalog();
+  return toProduct(row);
+}
+
+export async function updateProduct(id: string, patch: ProductPatch): Promise<Product | null> {
+  const exists = await prisma.product.findUnique({ where: { id }, select: { id: true } });
+  if (!exists) return null;
+
+  // Varyantlar gömülü bir liste gibi davranır: gönderildiyse tamamı değişir.
+  // Silinmiş bir boy ayakta kalmasın diye önce temizlenir.
+  const row = await prisma.$transaction(async (tx) => {
+    if (patch.variants !== undefined) {
+      await tx.variant.deleteMany({ where: { productId: id } });
+      if (patch.variants.length > 0) {
+        await tx.variant.createMany({
+          data: patch.variants.map((v, i) => ({
+            productId: id,
+            size: v.size,
+            priceCents: toCents(v.price),
+            sortOrder: i,
+          })),
+        });
+      }
+    }
+    return tx.product.update({
+      where: { id },
+      data: productData(patch),
+      include: productInclude,
+    });
+  });
+
+  invalidateCatalog();
+  return toProduct(row);
 }
 
 export async function deleteProduct(id: string): Promise<boolean> {
-  return transaction(async (catalog) => {
-    const before = catalog.products.length;
-    catalog.products = catalog.products.filter((p) => p.id !== id);
-    if (catalog.products.length === before) return false;
-    await writeCatalog(catalog);
-    return true;
-  });
+  const { count } = await prisma.product.deleteMany({ where: { id } });
+  if (count > 0) invalidateCatalog();
+  return count > 0;
 }
 
 export async function createCategory(name: string, id: string): Promise<Category> {
-  return transaction(async (catalog) => {
-    let unique = id;
-    let n = 2;
-    while (catalog.categories.some((c) => c.id === unique)) unique = `${id}-${n++}`;
+  let unique = id;
+  let n = 2;
+  while (await prisma.category.findUnique({ where: { id: unique }, select: { id: true } })) {
+    unique = `${id}-${n++}`;
+  }
 
-    const maxSort = catalog.categories.reduce((m, c) => Math.max(m, c.sortOrder), 0);
-    const category: Category = {
-      id: unique,
-      name,
-      nameTr: "",
-      note: "",
-      noteTr: "",
-      sortOrder: maxSort + 1,
-    };
-    catalog.categories.push(category);
-    await writeCatalog(catalog);
-    return category;
+  const max = await prisma.category.aggregate({ _max: { sortOrder: true } });
+  const row = await prisma.category.create({
+    data: { id: unique, name, sortOrder: (max._max.sortOrder ?? 0) + 1 },
   });
+  invalidateCatalog();
+  return toCategory(row);
 }
 
 export async function updateCategory(
   id: string,
   patch: Partial<Pick<Category, "name" | "sortOrder">>
 ): Promise<Category | null> {
-  return transaction(async (catalog) => {
-    const index = catalog.categories.findIndex((c) => c.id === id);
-    if (index === -1) return null;
-    catalog.categories[index] = { ...catalog.categories[index], ...patch };
-    await writeCatalog(catalog);
-    return catalog.categories[index];
-  });
+  const exists = await prisma.category.findUnique({ where: { id }, select: { id: true } });
+  if (!exists) return null;
+  const row = await prisma.category.update({ where: { id }, data: patch });
+  invalidateCatalog();
+  return toCategory(row);
 }
 
 export type DeleteCategoryResult =
@@ -445,52 +501,47 @@ export type DeleteCategoryResult =
 
 /** Ürünü olan kategori silinmez — ürünler sahipsiz kalmasın. */
 export async function deleteCategory(id: string): Promise<DeleteCategoryResult> {
-  return transaction(async (catalog) => {
-    if (!catalog.categories.some((c) => c.id === id)) {
-      return { ok: false, reason: "not_found" } as const;
-    }
-    const used = catalog.products.filter((p) => p.categoryId === id).length;
-    if (used > 0) {
-      return { ok: false, reason: "has_products", count: used } as const;
-    }
-    catalog.categories = catalog.categories.filter((c) => c.id !== id);
-    await writeCatalog(catalog);
-    return { ok: true } as const;
-  });
+  const exists = await prisma.category.findUnique({ where: { id }, select: { id: true } });
+  if (!exists) return { ok: false, reason: "not_found" };
+
+  const used = await prisma.product.count({ where: { categoryId: id } });
+  if (used > 0) return { ok: false, reason: "has_products", count: used };
+
+  await prisma.category.delete({ where: { id } });
+  invalidateCatalog();
+  return { ok: true };
 }
 
 /* ---------------------------------------------------------------- ayarlar */
 
 export async function getSettings(): Promise<Settings> {
-  return (await readCatalog()).settings;
+  return (await getCatalog()).settings;
 }
 
 export async function updateSettings(patch: Partial<Settings>): Promise<Settings> {
-  return transaction(async (catalog) => {
-    catalog.settings = { ...catalog.settings, ...patch };
-    await writeCatalog(catalog);
-    return catalog.settings;
+  const data: Prisma.SettingsUncheckedUpdateInput = {};
+  if (patch.serviceFee !== undefined) data.serviceFeeCents = toCents(patch.serviceFee);
+  if (patch.freeServiceOver !== undefined) {
+    data.freeServiceOverCents = toCents(patch.freeServiceOver);
+  }
+
+  const row = await prisma.settings.upsert({
+    where: { id: 1 },
+    create: {
+      id: 1,
+      serviceFeeCents: toCents(patch.serviceFee ?? 0),
+      freeServiceOverCents: toCents(patch.freeServiceOver ?? 0),
+    },
+    update: data,
   });
+  invalidateCatalog();
+  return toSettings(row);
 }
 
 /* --------------------------------------------------------- yapılandırıcı */
 
 export async function getBuilderConfig(): Promise<BuilderConfig> {
-  return (await readCatalog()).builder;
-}
-
-/**
- * Yapılandırıcının taban fiyatı.
- *
- * Katalogdaki gerçek ürünün (varsayılan: menüdeki döner) güncel satış fiyatı
- * kullanılır — indirim varsa indirimli olan. Ürün silinmiş/bulunamıyorsa
- * `fallbackBasePrice` devreye girer.
- */
-function resolveBasePrice(catalog: Catalog): number {
-  const { baseProductId, fallbackBasePrice } = catalog.builder;
-  if (!baseProductId) return fallbackBasePrice;
-  const product = catalog.products.find((p) => p.id === baseProductId);
-  return product ? effectivePrice(product) : fallbackBasePrice;
+  return (await getCatalog()).builder;
 }
 
 /** Müşteri tarafına gönderilen yapılandırıcı görünümü (taban fiyat çözülmüş). */
@@ -501,7 +552,7 @@ export type PublicBuilder = {
 };
 
 export async function getPublicBuilder(): Promise<PublicBuilder> {
-  const catalog = await readCatalog();
+  const catalog = await getCatalog();
   const product = catalog.builder.baseProductId
     ? catalog.products.find((p) => p.id === catalog.builder.baseProductId)
     : undefined;
@@ -513,11 +564,57 @@ export async function getPublicBuilder(): Promise<PublicBuilder> {
 }
 
 export async function updateBuilder(patch: Partial<BuilderConfig>): Promise<BuilderConfig> {
-  return transaction(async (catalog) => {
-    catalog.builder = { ...catalog.builder, ...patch };
-    await writeCatalog(catalog);
-    return catalog.builder;
+  await prisma.$transaction(async (tx) => {
+    if (patch.baseProductId !== undefined || patch.fallbackBasePrice !== undefined) {
+      const data: Prisma.SettingsUncheckedUpdateInput = {};
+      if (patch.baseProductId !== undefined) data.builderBaseProductId = patch.baseProductId;
+      if (patch.fallbackBasePrice !== undefined) {
+        data.builderFallbackPriceCents = toCents(patch.fallbackBasePrice);
+      }
+      await tx.settings.upsert({
+        where: { id: 1 },
+        create: {
+          id: 1,
+          builderBaseProductId: patch.baseProductId ?? null,
+          builderFallbackPriceCents: toCents(patch.fallbackBasePrice ?? 0),
+        },
+        update: data,
+      });
+    }
+
+    if (!patch.groups) return;
+
+    // Grup kimlikleri koddan gelir; burada yalnızca içerikleri güncellenir.
+    for (const [index, group] of patch.groups.entries()) {
+      await tx.builderGroup.upsert({
+        where: { id: group.id },
+        create: { id: group.id, mode: group.mode, sortOrder: index },
+        update: { mode: group.mode, sortOrder: index },
+      });
+
+      for (const [oi, option] of group.options.entries()) {
+        const data = {
+          groupId: group.id,
+          label: option.label,
+          labelDe: option.labelDe,
+          desc: option.desc,
+          descDe: option.descDe,
+          priceCents: toCents(option.price),
+          kcal: option.kcal,
+          image: option.image,
+          sortOrder: oi,
+        };
+        await tx.builderOption.upsert({
+          where: { id: option.id },
+          create: { id: option.id, ...data },
+          update: data,
+        });
+      }
+    }
   });
+
+  invalidateCatalog();
+  return getBuilderConfig();
 }
 
 /* -------------------------------------------------------------- fiyatlama */
@@ -550,8 +647,18 @@ export type PricedLine = {
   lineCents: number;
   kcal: number;
   qty: number;
+  /** Satırın KDV oranı (7 veya 19); dökümü bu belirler. */
+  vatRate: number;
   /** Ürün menüden kalktıysa/silindiyse true; toplama dahil edilmez. */
   unavailable: boolean;
+};
+
+/** Bir KDV oranı için net/vergi/brüt üçlüsü. */
+export type VatBucket = {
+  rate: number;
+  netCents: number;
+  vatCents: number;
+  grossCents: number;
 };
 
 export type Quote = {
@@ -562,6 +669,8 @@ export type Quote = {
   /** Ücretsiz servise kalan tutar; eşik yoksa veya aşıldıysa 0. */
   remainingForFreeServiceCents: number;
   freeServiceOverCents: number;
+  /** Orana göre KDV dökümü. Brüt toplamları `totalCents` ile eşittir. */
+  vatBreakdown: VatBucket[];
   currency: "EUR";
 };
 
@@ -586,6 +695,30 @@ export function productKey(productId: string, variantSize?: string): string {
   return `product:${productId}|${variantSize ?? ""}`;
 }
 
+/**
+ * Yapılandırıcının taban fiyatı.
+ *
+ * Katalogdaki gerçek ürünün (varsayılan: menüdeki döner) güncel satış fiyatı
+ * kullanılır — indirim varsa indirimli olan. Ürün silinmiş/bulunamıyorsa
+ * `fallbackBasePrice` devreye girer.
+ */
+function resolveBasePrice(catalog: Catalog): number {
+  const { baseProductId, fallbackBasePrice } = catalog.builder;
+  if (!baseProductId) return fallbackBasePrice;
+  const product = catalog.products.find((p) => p.id === baseProductId);
+  return product ? effectivePrice(product) : fallbackBasePrice;
+}
+
+/**
+ * Yapılandırıcı satırının KDV oranı taban üründen gelir; taban ürün yoksa
+ * yemek oranı (%7) varsayılır — yapılandırıcı her zaman bir yemek üretir.
+ */
+function builderVatRate(catalog: Catalog): number {
+  const id = catalog.builder.baseProductId;
+  const product = id ? catalog.products.find((p) => p.id === id) : undefined;
+  return product?.vatRate ?? 7;
+}
+
 function priceBuilderLine(
   catalog: Catalog,
   input: Extract<CartLineInput, { kind: "builder" }>,
@@ -594,7 +727,7 @@ function priceBuilderLine(
   const groups = new Map(catalog.builder.groups.map((g) => [g.id, g] as const));
 
   /** Seçim bulunamazsa gruptaki ilk seçeneğe düşülür; satır fiyatsız kalmaz. */
-  const pick = (groupId: "bread" | "protein" | "sauce", id: string): BuilderOption | null => {
+  const pick = (groupId: BuilderGroupId, id: string): BuilderOption | null => {
     const group = groups.get(groupId);
     if (!group) return null;
     return group.options.find((o) => o.id === id) ?? group.options[0] ?? null;
@@ -638,6 +771,7 @@ function priceBuilderLine(
     lineCents: unitCents * qty,
     kcal,
     qty,
+    vatRate: builderVatRate(catalog),
     unavailable: chosen.length === 0,
   };
 }
@@ -661,6 +795,7 @@ function priceProductLine(
       lineCents: 0,
       kcal: 0,
       qty,
+      vatRate: product?.vatRate ?? 7,
       unavailable: true,
     };
   }
@@ -679,6 +814,7 @@ function priceProductLine(
       lineCents: 0,
       kcal: 0,
       qty,
+      vatRate: product.vatRate,
       unavailable: true,
     };
   }
@@ -696,8 +832,63 @@ function priceProductLine(
     lineCents: unitCents * qty,
     kcal: 0,
     qty,
+    vatRate: product.vatRate,
     unavailable: false,
   };
+}
+
+/**
+ * Brüt tutardan KDV ayrıştırır.
+ *
+ * Almanya'da tüketiciye gösterilen fiyat brüttür (PAngV § 3): vergi fiyatın
+ * **içindedir**, üstüne eklenmez. Bu yüzden net = brüt / (1 + oran).
+ */
+function splitVat(grossCents: number, rate: number): { netCents: number; vatCents: number } {
+  const netCents = Math.round(grossCents / (1 + rate / 100));
+  return { netCents, vatCents: grossCents - netCents };
+}
+
+/**
+ * Sepetin KDV dökümü.
+ *
+ * Servis ücreti yan edim (Nebenleistung) sayılır ve tek bir orana bağlanamaz;
+ * sepetteki brüt tutarların oranına göre bölüştürülür. Yuvarlama artığı en
+ * büyük paya eklenir, böylece dökümün brüt toplamı `totalCents` ile birebir
+ * eşit kalır.
+ *
+ * NOT: Karışık %7/%19 sepette yan edimin bölüştürülmesi Steuerberater'e
+ * doğrulatılacak açık bir konudur; buradaki yöntem oransal dağıtımdır.
+ */
+export function buildVatBreakdown(lines: PricedLine[], extraCents: number): VatBucket[] {
+  const byRate = new Map<number, number>();
+  for (const line of lines) {
+    if (line.unavailable) continue;
+    byRate.set(line.vatRate, (byRate.get(line.vatRate) ?? 0) + line.lineCents);
+  }
+  if (byRate.size === 0) return [];
+
+  const lineTotal = [...byRate.values()].reduce((a, b) => a + b, 0);
+  const rates = [...byRate.keys()].sort((a, b) => a - b);
+
+  // Yan edimi oransal dağıt; kuruş artığı en büyük paya gider.
+  const gross = new Map<number, number>();
+  let distributed = 0;
+  rates.forEach((rate, i) => {
+    const share = byRate.get(rate) ?? 0;
+    const add =
+      i === rates.length - 1
+        ? extraCents - distributed
+        : lineTotal === 0
+          ? 0
+          : Math.round((extraCents * share) / lineTotal);
+    distributed += add;
+    gross.set(rate, share + add);
+  });
+
+  return rates.map((rate) => {
+    const grossCents = gross.get(rate) ?? 0;
+    return { rate, grossCents, ...splitVat(grossCents, rate) };
+  });
 }
 
 /**
@@ -711,7 +902,7 @@ export async function priceCart(
   inputs: CartLineInput[],
   lang: "tr" | "de" = "tr"
 ): Promise<Quote> {
-  const catalog = await readCatalog();
+  const catalog = await getCatalog();
 
   const lines = inputs
     .slice(0, 60)
@@ -741,19 +932,10 @@ export async function priceCart(
         ? thresholdCents - subtotalCents
         : 0,
     freeServiceOverCents: thresholdCents,
+    vatBreakdown: buildVatBreakdown(lines, serviceFeeCents),
     currency: "EUR",
   };
 }
 
-/**
- * Ana sayfadaki "öne çıkan lezzetler" bölümü.
- *
- * Sabit liste yerine katalogdan gelir: fiyat, ad ve görünürlük admin panelinden
- * yönetilir. Görseli olan ürünler öne alınır, yoksa sıraya göre doldurulur.
- */
-export async function getFeaturedProducts(limit = 3): Promise<Product[]> {
-  const { products } = await readCatalog();
-  const visible = products.filter(isVisible).sort((a, b) => a.sortOrder - b.sortOrder);
-  const withImage = visible.filter((p) => p.image);
-  return [...withImage, ...visible.filter((p) => !p.image)].slice(0, limit);
-}
+/** Slug üretimi tip modülünde; buradan da erişilebilsin diye yeniden verilir. */
+export { slugify };

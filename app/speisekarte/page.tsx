@@ -1,29 +1,43 @@
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
+import Products from "@/components/Products";
 import MenuGrid from "@/components/MenuGrid";
 import Footer from "@/components/Footer";
-import { getMenuSections } from "@/lib/admin/store";
+import { getFeaturedProducts, getMenuSections } from "@/lib/admin/store";
 
 /**
- * Karta artık sabit dosyadan değil, admin panelinin yazdığı katalog deposundan
- * beslenir. Bu yüzden sayfa her istekte yeniden üretilir: panelde bir ürün
- * "tükendi"/"pasif" yapıldığı anda burada da kaybolur, tekrar açıldığında döner.
+ * Karta sayfası — sitenin sipariş yüzeyi.
+ *
+ * En üstte "öne çıkanlar" vitrini durur: çoğu müşteri zaten aynı birkaç ürünü
+ * söyler, onları altmış satırlık listede aratmanın anlamı yok. Vitrinin altında
+ * tam menü, kategori şeridi ve arama gelir.
+ *
+ * Vitrindeki ürünler admin panelinden seçilir ("Öne çıkar" anahtarı); menü ise
+ * katalogtaki görünür ürünlerin tamamıdır. Sayfa her istekte yeniden üretilir:
+ * panelde bir ürün "tükendi"/"pasif" yapıldığı anda burada da kaybolur.
  */
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Speisekarte — Sami´s Döner // Straßkirchen",
   description:
-    "Die komplette Speisekarte von Sami´s Döner in Straßkirchen: Drehspieß, Pide, Lahmacun, Pizza, Salate und Getränke mit aktuellen Preisen.",
+    "Die komplette Speisekarte von Sami´s Döner in Straßkirchen: Drehspieß, Pide, Lahmacun, Pizza, Salate und Getränke mit aktuellen Preisen — direkt online bestellen.",
 };
 
 export default async function SpeisekartePage() {
-  const sections = await getMenuSections();
+  const [featured, sections] = await Promise.all([
+    getFeaturedProducts(3),
+    getMenuSections(),
+  ]);
 
   return (
     <main className="bg-void">
       <Navbar />
-      <MenuGrid sections={sections} />
+      {/* Sabit navbarın altında kalmasın: bu sayfada vitrin en üstteki bölüm. */}
+      <div className="pt-[var(--nav-h)]">
+        <Products products={featured} showMenuLink={false} lead />
+      </div>
+      <MenuGrid sections={sections} standalone={false} />
       <Footer />
     </main>
   );

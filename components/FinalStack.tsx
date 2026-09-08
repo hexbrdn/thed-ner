@@ -74,12 +74,11 @@ export default function FinalStack() {
 
   return (
     <section ref={section} id="stack" className="relative overflow-hidden bg-void py-28 md:py-36">
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_20%_28%,rgba(123,214,111,0.12),transparent_34%),radial-gradient(ellipse_at_80%_20%,rgba(229,84,138,0.12),transparent_32%)]" />
       <div className="max-w-[1400px] mx-auto px-6 md:px-10">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
           <div>
             <p className="tag text-flame mb-3">{t.stack.tag}</p>
-            <h2 className="font-display font-extrabold text-[9vw] md:text-[3.2vw] leading-[0.95] text-bone">
+            <h2 className="section-title font-display font-extrabold text-bone">
               {t.stack.title1}
               <br />
               <span className="text-flame">{t.stack.title2}</span>

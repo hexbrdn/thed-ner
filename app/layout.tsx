@@ -4,6 +4,7 @@ import "./globals.css";
 import SmoothScroll from "@/components/SmoothScroll";
 import CartDrawer from "@/components/CartDrawer";
 import { CartProvider } from "@/lib/cart";
+import { FavoritesProvider } from "@/lib/account/FavoritesContext";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 import { BUSINESS_INFO } from "@/data/businessInfo";
 
@@ -82,7 +83,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="tr" className={`${display.variable} ${mono.variable} ${body.variable}`}>
+    <html lang="de" className={`${display.variable} ${mono.variable} ${body.variable}`}>
       <head>
         <script
           type="application/ld+json"
@@ -93,8 +94,13 @@ export default function RootLayout({
         <div className="grain-overlay" />
         <LanguageProvider>
           <CartProvider>
-            <SmoothScroll>{children}</SmoothScroll>
-            <CartDrawer />
+            {/* Favoriler sepetin İÇİNDE: kalp düğmesi menü satırında sepete
+                ekleme düğmesinin yanında duruyor, ikisi aynı ağaçta olmalı.
+                Oturum yoksa sağlayıcı kapalı kalır ve hiçbir şey çizmez. */}
+            <FavoritesProvider>
+              <SmoothScroll>{children}</SmoothScroll>
+              <CartDrawer />
+            </FavoritesProvider>
           </CartProvider>
         </LanguageProvider>
       </body>

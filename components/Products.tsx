@@ -7,15 +7,34 @@ import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useCart } from "@/lib/cart";
 
 /**
- * Ana sayfadaki "öne çıkan lezzetler".
+ * "Öne çıkan lezzetler" vitrini.
  *
- * Ürünler ve fiyatlar katalogtan (admin paneli) gelir; bileşende sabit ürün ya
- * da sabit fiyat yoktur. Sepete eklerken de fiyat gönderilmez — yalnızca ürün
- * kimliği ve varsa boy; tutarı sunucu hesaplar.
+ * İki yerde kullanılır ve ikisinde de aynı bileşendir: ana sayfada menüye
+ * açılan kapı, karta sayfasının en üstünde ise hızlı seçim şeridi. Fark tek
+ * bir düğmede: karta sayfasında zaten menüdesiniz, "tüm menü" bağlantısı
+ * gösterilmez (`showMenuLink`).
+ *
+ * Hangi ürünlerin vitrine gireceği **admin panelinden** belirlenir (ürün
+ * kartındaki "Öne çıkar" anahtarı); bileşende sabit ürün ya da sabit fiyat
+ * yoktur. Sepete eklerken de fiyat gönderilmez — yalnızca ürün kimliği ve
+ * varsa boy; tutarı sunucu hesaplar.
  */
-export default function Products({ products }: { products: Product[] }) {
+export default function Products({
+  products,
+  showMenuLink = true,
+  lead = false,
+}: {
+  products: Product[];
+  showMenuLink?: boolean;
+  /**
+   * Sayfanın baş bölümü mü. Öyleyse başlık `h1` basılır — karta sayfasında
+   * vitrin en üstte durduğu için sayfanın tek `h1`'i buradan gelir.
+   */
+  lead?: boolean;
+}) {
   const { t, lang } = useLanguage();
   const { add, openCart } = useCart();
+  const Heading = lead ? "h1" : "h2";
 
   return (
     <section id="produkte" className="relative overflow-hidden bg-void py-24 md:py-32 border-t border-line">
@@ -23,9 +42,9 @@ export default function Products({ products }: { products: Product[] }) {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
           <div>
             <p className="tag text-flame mb-3">{t.products.tag}</p>
-            <h2 className="font-display font-extrabold text-[8vw] md:text-[3.2vw] leading-[0.95] text-bone">
+            <Heading className="section-title font-display font-extrabold text-bone">
               {t.products.title}
-            </h2>
+            </Heading>
           </div>
           <p className="tag text-smoke max-w-[320px]">{t.products.description}</p>
         </div>
@@ -101,14 +120,16 @@ export default function Products({ products }: { products: Product[] }) {
           </div>
         )}
 
-        <div className="mt-10 flex justify-center">
-          <Link
-            href="/speisekarte"
-            className="focus-ring tag border border-line text-smoke px-6 py-3 hover:border-amber hover:text-amber transition-colors"
-          >
-            {t.products.seeMenu}
-          </Link>
-        </div>
+        {showMenuLink && (
+          <div className="mt-10 flex justify-center">
+            <Link
+              href="/speisekarte"
+              className="focus-ring tag border border-amber bg-amber/10 text-amber px-7 py-3.5 hover:bg-amber hover:text-void transition-colors"
+            >
+              {t.products.seeMenu}
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   );

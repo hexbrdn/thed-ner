@@ -1,5 +1,7 @@
 import type { ProductPatch } from "./store";
 import type { Variant } from "./types";
+import type { DeliveryZoneInput } from "@/lib/orders/zones";
+import { toCents } from "@/lib/money";
 
 /**
  * İstek gövdesi doğrulaması.
@@ -164,6 +166,11 @@ export function parseProductBody(
   if (has("showOnHome")) out.showOnHome = Boolean(input.showOnHome);
   else if (!partial) out.showOnHome = true;
 
+  // Vitrin bayrağı: yeni ürün varsayılan olarak öne çıkarılmaz, işletmeci
+  // bilinçli olarak seçer.
+  if (has("featured")) out.featured = Boolean(input.featured);
+  else if (!partial) out.featured = false;
+
   // Sıra yalnızca gönderildiğinde değişir; yeni üründe depo sonuna eklenir.
   if (has("sortOrder")) {
     const r = asSortOrder(input.sortOrder);
@@ -177,6 +184,97 @@ export function parseProductBody(
   if (typeof price === "number" && typeof discount === "number" && discount >= price) {
     return { ok: false, error: "İndirimli fiyat, normal fiyattan düşük olmalı." };
   }
+
+  return { ok: true, value: out };
+}
+
+/* ------------------------------------------------------- teslimat bölgesi */
+
+/** Almanya posta kodu: beş rakam. */
+function asPostalCode(value: unknown): Result<string> {
+  if (typeof value !== "string") return { ok: false, error: "Posta kodu metin olmalı." };
+  const trimmed = value.trim();
+  if (!/^\d{5}$/.test(trimmed)) {
+    return { ok: false, error: "Posta kodu beş rakamdan oluşmalı (ör. 94343)." };
+  }
+  return { ok: true, value: trimmed };
+}
+
+/** Euro girdisini cent'e çevirir; tutarlar veritabanında tam sayı tutulur. */
+function asCents(value: unknown, field: string): Result<number> {
+  const price = asPrice(value, field);
+  if (!price.ok) return price;
+  return { ok: true, value: toCents(price.value) };
+}
+
+function asMinutes(value: unknown): Result<number> {
+  const num = typeof value === "string" ? Number(value.trim()) : value;
+  if (typeof num !== "number" || !Number.isFinite(num)) {
+    return { ok: false, error: "Teslimat süresi sayı olmalı." };
+  }
+  if (num < 5 || num > 240) {
+    return { ok: false, error: "Teslimat süresi 5 ile 240 dakika arasında olmalı." };
+  }
+  return { ok: true, value: Math.round(num) };
+}
+
+/**
+ * Teslimat bölgesi gövdesi.
+ *
+ * `partial` PATCH içindir: yalnızca gönderilen alanlar doğrulanır, gönderilmeyen
+ * alanlar mevcut kaydında kalır. POST'ta posta kodu zorunlu, para alanlarının
+ * boş bırakılanı 0 sayılır (ücretsiz teslimat / eşiksiz).
+ */
+export function parseDeliveryZoneBody(
+  body: unknown,
+  partial: boolean
+): Result<Partial<DeliveryZoneInput>> {
+  if (typeof body !== "object" || body === null) {
+    return { ok: false, error: "Geçersiz istek gövdesi." };
+  }
+  const input = body as Record<string, unknown>;
+  const out: Partial<DeliveryZoneInput> = {};
+
+  const has = (key: string) => Object.prototype.hasOwnProperty.call(input, key);
+  const blank = (key: string) => input[key] === "" || input[key] === null || input[key] === undefined;
+
+  if (has("postalCode") || !partial) {
+    const r = asPostalCode(input.postalCode);
+    if (!r.ok) return r;
+    out.postalCode = r.value;
+  }
+
+  if (has("city") || !partial) {
+    const r = asString(input.city, "Şehir", 80, false);
+    if (!r.ok) return r;
+    out.city = r.value;
+  }
+
+  const amounts = [
+    ["minOrder", "minOrderCents", "Minimum sepet tutarı"],
+    ["fee", "feeCents", "Teslimat ücreti"],
+    ["freeOver", "freeOverCents", "Ücretsiz teslimat eşiği"],
+  ] as const;
+
+  for (const [key, field, label] of amounts) {
+    if (!has(key) && partial) continue;
+    if (blank(key)) {
+      out[field] = 0;
+      continue;
+    }
+    const r = asCents(input[key], label);
+    if (!r.ok) return r;
+    out[field] = r.value;
+  }
+
+  if (has("etaMinutes") || !partial) {
+    const r = asMinutes(blank("etaMinutes") ? 45 : input.etaMinutes);
+    if (!r.ok) return r;
+    out.etaMinutes = r.value;
+  }
+
+  if (has("active")) out.active = Boolean(input.active);
+  else if (!partial) out.active = true;
 
   return { ok: true, value: out };
 }

@@ -1,6 +1,6 @@
 // Web Audio ile sentezlenen mikro efektler — ses dosyası yok, her şey anlık üretiliyor.
 // Tarayıcılar kullanıcı etkileşimi olmadan ses açmaya izin vermediği için
-// AudioContext ilk kez ses düğmesine basıldığında (unlockAudio) kuruluyor.
+// AudioContext ilk etkileşimde (unlockAudio) kuruluyor ve açılıyor.
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -19,10 +19,30 @@ function ensureContext(): AudioContext | null {
   return ctx;
 }
 
-/** Ses düğmesine basıldığında çağrılır: askıya alınmış context'i açar. */
-export function unlockAudio() {
+/**
+ * Askıya alınmış context'i açar; ses gerçekten çalabiliyorsa `true` döner.
+ *
+ * Tarayıcı, kullanıcı sayfayla etkileşmeden ses çalmaya izin vermez. Bu yüzden
+ * panel bunu iki yerden çağırır: açılışta (sayfa daha önce etkileşim görmüşse
+ * hemen açılır) ve ilk dokunuş/tuşta. Dönen değer, "ses açık" rozetinin
+ * yalan söylememesi için gerekli — `resume()` sessizce reddedilebilir.
+ */
+export async function unlockAudio(): Promise<boolean> {
   const c = ensureContext();
-  if (c && c.state === "suspended") void c.resume();
+  if (!c) return false;
+  if (c.state === "suspended") {
+    try {
+      await c.resume();
+    } catch {
+      return false;
+    }
+  }
+  return c.state === "running";
+}
+
+/** Ses şu anda çalınabilir durumda mı — context kurulmamışsa kurmaz. */
+export function audioReady(): boolean {
+  return ctx !== null && ctx.state === "running";
 }
 
 function whiteNoise(c: AudioContext) {
@@ -118,4 +138,44 @@ export function playToggle(on: boolean) {
   osc.connect(g).connect(master);
   osc.start(t);
   osc.stop(t + 0.12);
+}
+
+/**
+ * Yeni sipariş uyarısı — panelde çalar.
+ *
+ * İki tonlu, yükselen kısa bir zil. Mutfakta gürültü olduğu için diğer
+ * efektlerden belirgin biçimde yüksek ve tiz tutulur; kısa olması da önemli,
+ * çünkü sipariş onaylanana kadar düzenli aralıklarla tekrar çalınır.
+ *
+ * `unlockAudio` başarıyla çağrılmadan sessizdir: tarayıcı, kullanıcı etkileşimi
+ * olmadan ses çalmaya izin vermez. Panel bunu kendi kendine dener — açılışta ve
+ * ilk dokunuş/tuşta — kullanıcıdan ayrıca bir düğmeye basmasını beklemez.
+ */
+export function playOrderAlert() {
+  const c = ensureContext();
+  if (!c || !master || c.state !== "running") return;
+
+  // `master` modül düzeyinde bir `let`; geri çağırım içinde daraltma korunmaz,
+  // bu yüzden yerel bir sabite alınır.
+  const out = master;
+  const t = c.currentTime;
+  const notes = [880, 1320];
+
+  notes.forEach((freq, i) => {
+    const at = t + i * 0.16;
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(freq, at);
+
+    gain.gain.setValueAtTime(0, at);
+    gain.gain.linearRampToValueAtTime(0.9, at + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.34);
+
+    osc.connect(gain);
+    gain.connect(out);
+    osc.start(at);
+    osc.stop(at + 0.36);
+  });
 }

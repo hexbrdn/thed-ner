@@ -40,9 +40,39 @@ export type Product = {
   inStock: boolean;
   /** Aktif olsa bile menü/ana sayfa listesinde gösterilsin mi. */
   showOnHome: boolean;
+  /**
+   * "Öne çıkanlar" vitrinine alınmış mı.
+   *
+   * Ana sayfadaki kısa liste ve karta sayfasının en üstü buna bakar. Ürünün
+   * menüde görünmesiyle ilgisi yoktur: `showOnHome` ürünü menüde tutar,
+   * `featured` onu vitrine çıkarır.
+   */
+  featured: boolean;
   variants: Variant[];
   /** Menüdeki sıra; küçük olan üstte. */
   sortOrder: number;
+
+  /**
+   * KDV oranı (7 veya 19) — sabit değil, **ürün başına**.
+   * Steueränderungsgesetz 2025 (§ 12 Abs. 2 Nr. 15 UStG) ile 01.01.2026'dan
+   * beri tüm yemekler %7, tüm içecekler %19.
+   */
+  vatRate: number;
+  /** LMIV Ek II — bildirimi zorunlu alerjenler. */
+  allergens: Allergen[];
+  /** ZZulV — yazılı bildirimi zorunlu katkı maddesi sınıfları. */
+  additives: Additive[];
+  /**
+   * Boş liste "bilgi girilmedi" ile "madde yok" arasında ayrım yapamaz;
+   * bu bayrak işletmecinin bilinçli "yok" beyanını kaydeder. False ise ürün
+   * eksik bilgiyle yayında sayılır.
+   */
+  allergenInfoConfirmed: boolean;
+  /**
+   * § 312g Abs. 2 BGB — cayma hakkı istisnası yalnızca çabuk bozulan malda.
+   * Kapalı şişe içecek bozulmaz; istisnaya girmez.
+   */
+  isPerishable: boolean;
 };
 
 export type Category = {
@@ -161,4 +191,109 @@ export function slugify(input: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60);
+}
+
+/* ------------------------------------------- alerjen ve katkı maddesi (yasal) */
+
+/**
+ * LMIV (AB 1169/2011) Ek II — bildirimi zorunlu 14 alerjen.
+ *
+ * Art. 14/44 uyarınca bu bilgi, sipariş **bağlayıcı hale gelmeden önce**
+ * verilmek zorundadır; yalnızca sipariş onayında göstermek yeterli değildir.
+ * Açık satılan üründe (döner tam olarak budur) de geçerlidir.
+ */
+export const ALLERGENS = [
+  "GLUTEN",
+  "CRUSTACEANS",
+  "EGGS",
+  "FISH",
+  "PEANUTS",
+  "SOYBEANS",
+  "MILK",
+  "NUTS",
+  "CELERY",
+  "MUSTARD",
+  "SESAME",
+  "SULPHITES",
+  "LUPIN",
+  "MOLLUSCS",
+] as const;
+
+export type Allergen = (typeof ALLERGENS)[number];
+
+export const ALLERGEN_LABELS: Record<Allergen, { de: string; tr: string }> = {
+  GLUTEN: { de: "Glutenhaltiges Getreide", tr: "Glüten içeren tahıllar" },
+  CRUSTACEANS: { de: "Krebstiere", tr: "Kabuklu deniz ürünleri" },
+  EGGS: { de: "Eier", tr: "Yumurta" },
+  FISH: { de: "Fisch", tr: "Balık" },
+  PEANUTS: { de: "Erdnüsse", tr: "Yer fıstığı" },
+  SOYBEANS: { de: "Soja", tr: "Soya" },
+  MILK: { de: "Milch (inkl. Laktose)", tr: "Süt (laktoz dahil)" },
+  NUTS: { de: "Schalenfrüchte (Nüsse)", tr: "Sert kabuklu yemişler" },
+  CELERY: { de: "Sellerie", tr: "Kereviz" },
+  MUSTARD: { de: "Senf", tr: "Hardal" },
+  SESAME: { de: "Sesamsamen", tr: "Susam" },
+  SULPHITES: { de: "Schwefeldioxid und Sulphite", tr: "Kükürt dioksit ve sülfitler" },
+  LUPIN: { de: "Lupinen", tr: "Acı bakla" },
+  MOLLUSCS: { de: "Weichtiere", tr: "Yumuşakçalar" },
+};
+
+/**
+ * ZZulV — kenntlichmachungspflichtige katkı maddesi sınıfları.
+ *
+ * LMIV alerjenlerinden **ayrı** bir Alman yükümlülüğü. İşlevsel sınıf adı
+ * yeterlidir ("mit Farbstoff"), tek tek E-numarası gerekmez; ama bildirimin
+ * **yazılı** olması şarttır — "personele sorunuz" katkı maddelerinde geçerli
+ * bir bildirim değildir.
+ */
+export const ADDITIVES = [
+  "FARBSTOFF",
+  "KONSERVIERUNGSSTOFF",
+  "ANTIOXIDATIONSMITTEL",
+  "GESCHMACKSVERSTAERKER",
+  "GESCHWEFELT",
+  "GESCHWAERZT",
+  "GEWACHST",
+  "PHOSPHAT",
+  "SUESSUNGSMITTEL",
+  "PHENYLALANINQUELLE",
+  "ABFUEHREND",
+  "KOFFEINHALTIG",
+  "CHININHALTIG",
+  "TAURINHALTIG",
+] as const;
+
+export type Additive = (typeof ADDITIVES)[number];
+
+/** Almanca metinler yasal ifadelerdir; serbestçe değiştirilmemeli. */
+export const ADDITIVE_LABELS: Record<Additive, { de: string; tr: string }> = {
+  FARBSTOFF: { de: "mit Farbstoff", tr: "renklendirici içerir" },
+  KONSERVIERUNGSSTOFF: { de: "mit Konservierungsstoff", tr: "koruyucu içerir" },
+  ANTIOXIDATIONSMITTEL: { de: "mit Antioxidationsmittel", tr: "antioksidan içerir" },
+  GESCHMACKSVERSTAERKER: { de: "mit Geschmacksverstärker", tr: "aroma güçlendirici içerir" },
+  GESCHWEFELT: { de: "geschwefelt", tr: "kükürtlenmiş" },
+  GESCHWAERZT: { de: "geschwärzt", tr: "siyahlaştırılmış" },
+  GEWACHST: { de: "gewachst", tr: "mumlanmış" },
+  PHOSPHAT: { de: "mit Phosphat", tr: "fosfat içerir" },
+  SUESSUNGSMITTEL: { de: "mit Süßungsmittel", tr: "tatlandırıcı içerir" },
+  PHENYLALANINQUELLE: { de: "enthält eine Phenylalaninquelle", tr: "fenilalanin kaynağı içerir" },
+  ABFUEHREND: { de: "kann bei übermäßigem Verzehr abführend wirken", tr: "aşırı tüketimde laksatif etki" },
+  KOFFEINHALTIG: { de: "koffeinhaltig", tr: "kafein içerir" },
+  CHININHALTIG: { de: "chininhaltig", tr: "kinin içerir" },
+  TAURINHALTIG: { de: "taurinhaltig", tr: "taurin içerir" },
+};
+
+/** Geçerli KDV oranları. Başka bir değer kabul edilmez. */
+export const VAT_RATES = [7, 19] as const;
+
+/**
+ * Bir ürünün yasal bilgi bakımından yayına hazır olup olmadığı.
+ *
+ * Alerjen listesi boş bırakılabilir — ama bu ancak işletmeci "bu üründe
+ * bildirimi zorunlu alerjen yok" beyanını onayladıysa geçerlidir.
+ */
+export function hasLegalInfo(
+  product: Pick<Product, "allergens" | "allergenInfoConfirmed">
+): boolean {
+  return product.allergens.length > 0 || product.allergenInfoConfirmed;
 }

@@ -49,6 +49,7 @@ export async function POST(request: Request) {
     active: value.active ?? true,
     inStock: value.inStock ?? true,
     showOnHome: value.showOnHome ?? true,
+    featured: value.featured ?? false,
     variants: value.variants ?? [],
   }));
   if (product instanceof NextResponse) return product;

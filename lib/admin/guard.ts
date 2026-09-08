@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "./auth";
-import { StoreWriteError } from "./store";
+import { Prisma } from "@prisma/client";
 
 /**
  * Route handler'lar için ikinci savunma hattı.
@@ -29,10 +29,11 @@ export function notFound(message = "Kayıt bulunamadı.") {
 /**
  * Katalog yazma çağrılarını sarar.
  *
- * Salt okunur bir dosya sisteminde (Vercel gibi serverless ortamlar) yazma
- * `StoreWriteError` ile başarısız olur. O durumda isteği ham 500 ile düşürmek
- * yerine, arayüzün gösterebileceği açıklayıcı bir 503 döneriz. Beklenmedik
- * hatalar olduğu gibi yukarı fırlatılır.
+ * Veri katmanı artık PostgreSQL: beklenen tek "geçici" arıza veritabanına
+ * ulaşılamamasıdır. O durumda isteği ham 500 ile düşürmek yerine, arayüzün
+ * gösterebileceği açıklayıcı bir 503 döneriz. Benzersizlik ihlali gibi
+ * kullanıcı hatasından doğan durumlar 409 ile ayrılır; beklenmedik hatalar
+ * olduğu gibi yukarı fırlatılır.
  *
  * `T` hiçbir zaman `NextResponse` olmadığı için çağıran taraf `instanceof` ile
  * iki durumu güvenle ayırabilir.
@@ -41,9 +42,38 @@ export async function storeWrite<T>(fn: () => Promise<T>): Promise<T | NextRespo
   try {
     return await fn();
   } catch (error) {
-    if (error instanceof StoreWriteError) {
-      return NextResponse.json({ error: error.message }, { status: 503 });
+    // Veritabanına hiç bağlanılamadı (yanlış DATABASE_URL, kapalı sunucu…).
+    if (error instanceof Prisma.PrismaClientInitializationError) {
+      return NextResponse.json(
+        { error: "Veritabanına ulaşılamıyor. Değişiklik kaydedilmedi." },
+        { status: 503 }
+      );
     }
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      // P1001/P1002: sunucu erişilemez veya zaman aşımı — geçici arıza.
+      if (error.code === "P1001" || error.code === "P1002") {
+        return NextResponse.json(
+          { error: "Veritabanına ulaşılamıyor. Değişiklik kaydedilmedi." },
+          { status: 503 }
+        );
+      }
+      // P2002: benzersizlik ihlali — aynı kimlikte kayıt zaten var.
+      if (error.code === "P2002") {
+        return NextResponse.json(
+          { error: "Bu kayıt zaten var." },
+          { status: 409 }
+        );
+      }
+      // P2003: ilişki kısıtı — ör. var olmayan kategoriye ürün bağlanması.
+      if (error.code === "P2003") {
+        return NextResponse.json(
+          { error: "İlişkili kayıt bulunamadı." },
+          { status: 400 }
+        );
+      }
+    }
+
     throw error;
   }
 }

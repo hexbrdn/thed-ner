@@ -6,34 +6,36 @@ import {
   sessionCookieOptions,
   verifyPassword,
 } from "@/lib/admin/auth";
+import {
+  checkThrottle,
+  clearAttempts,
+  clientIp,
+  recordFailure,
+  throttleKeys,
+} from "@/lib/security/throttle";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Kaba kuvvet denemelerini yavaşlatan, IP başına basit sayaç. */
-const attempts = new Map<string, { count: number; firstAt: number }>();
-const WINDOW_MS = 10 * 60 * 1000;
-const MAX_ATTEMPTS = 8;
-
-function rateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = attempts.get(ip);
-  if (!entry || now - entry.firstAt > WINDOW_MS) {
-    attempts.set(ip, { count: 1, firstAt: now });
-    return false;
-  }
-  entry.count += 1;
-  return entry.count > MAX_ATTEMPTS;
-}
+/*
+ * Kısıtlayıcı artık veritabanında (`lib/security/throttle.ts`).
+ *
+ * Buradaki eski sayaç bir `Map` idi, yani süreç belleğinde. Bu, tek örnekli
+ * geliştirme sunucusunda çalışıyor gibi görünür ama canlıda hiçbir şey yapmaz:
+ * her istek başka bir sunucusuz örneğe düşer ve hiçbiri diğerinin sayacını
+ * görmez; sunucu yeniden başladığında da sayaç sıfırlanır. `LoginAttempt`
+ * tablosu şemaya tam bu yüzden konmuştu ama kullanılmıyordu.
+ */
 
 export async function POST(request: Request) {
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+  const ip = clientIp(request);
+  const keys = [throttleKeys.adminIp(ip)];
 
-  if (rateLimited(ip)) {
+  const throttle = await checkThrottle(keys);
+  if (throttle.blocked) {
     return NextResponse.json(
       { error: "Çok fazla deneme yapıldı. Lütfen birkaç dakika sonra tekrar deneyin." },
-      { status: 429 }
+      { status: 429, headers: { "Retry-After": String(throttle.retryAfterSeconds) } }
     );
   }
 
@@ -53,11 +55,12 @@ export async function POST(request: Request) {
   }
 
   if (!(await verifyPassword(password))) {
+    await recordFailure(keys);
     // hangi alanın yanlış olduğunu sızdırmayan tek tip mesaj
     return NextResponse.json({ error: "Parola hatalı." }, { status: 401 });
   }
 
-  attempts.delete(ip);
+  await clearAttempts(keys);
 
   const response = NextResponse.json({ ok: true });
   response.cookies.set(

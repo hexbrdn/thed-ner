@@ -17,7 +17,7 @@ const LanguageContext = createContext<LanguageContextType | null>(null);
 const STORAGE_KEY = "the-doner-lang";
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Language>("tr");
+  const [lang, setLangState] = useState<Language>("de");
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -25,6 +25,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       const saved = localStorage.getItem(STORAGE_KEY) as Language | null;
       if (saved && (saved === "tr" || saved === "de")) {
         setLangState(saved);
+      } else {
+        localStorage.setItem(STORAGE_KEY, "de");
       }
     } catch {
       // storage disabled / private browsing

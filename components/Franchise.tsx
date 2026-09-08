@@ -7,11 +7,10 @@ export default function Franchise() {
 
   return (
     <section id="franchise" className="relative overflow-hidden bg-char py-24 md:py-32 border-t border-line">
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_70%_20%,rgba(255,61,18,0.15),transparent_40%)]" />
       <div className="max-w-[1400px] mx-auto px-6 md:px-10">
         <div className="mb-14 max-w-3xl">
           <p className="tag text-flame mb-3">{t.franchise.tag}</p>
-          <h2 className="font-display font-extrabold text-[8vw] md:text-[3.2vw] leading-[0.95] text-bone mb-4">
+          <h2 className="section-title font-display font-extrabold text-bone mb-4">
             {t.franchise.title1}
             <br />
             <span className="text-flame">{t.franchise.title2}</span>

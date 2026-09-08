@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { formatPrice, type Category, type Product, type Variant } from "@/lib/admin/types";
+import { useScrollLock } from "@/lib/useScrollLock";
 import {
   Badge,
   Button,
@@ -29,6 +30,7 @@ type Draft = {
   active: boolean;
   inStock: boolean;
   showOnHome: boolean;
+  featured: boolean;
   sortOrder: string;
   variants: { size: string; price: string }[];
 };
@@ -52,6 +54,7 @@ function emptyDraft(categoryId: string): Draft {
     active: true,
     inStock: true,
     showOnHome: true,
+    featured: false,
     sortOrder: "",
     variants: [],
   };
@@ -72,6 +75,7 @@ function toDraft(product: Product): Draft {
     active: product.active,
     inStock: product.inStock,
     showOnHome: product.showOnHome,
+    featured: product.featured,
     sortOrder: String(product.sortOrder),
     variants: product.variants.map((v) => ({
       size: v.size,
@@ -99,6 +103,7 @@ function toPayload(draft: Draft) {
     active: draft.active,
     inStock: draft.inStock,
     showOnHome: draft.showOnHome,
+    featured: draft.featured,
     // Boş bırakılırsa mevcut sıra korunur (yeni üründe listenin sonuna eklenir).
     ...(draft.sortOrder.trim() === "" ? {} : { sortOrder: Number(draft.sortOrder.trim()) }),
     variants,
@@ -183,24 +188,6 @@ export default function ProductManager({
       setDraft(null);
       setEditing(null);
     }
-  }
-
-  async function toggleActive(product: Product) {
-    await send(`/api/admin/products/${encodeURIComponent(product.id)}`, "PATCH", {
-      active: !product.active,
-    });
-  }
-
-  async function toggleStock(product: Product) {
-    await send(`/api/admin/products/${encodeURIComponent(product.id)}`, "PATCH", {
-      inStock: !product.inStock,
-    });
-  }
-
-  async function toggleShowOnHome(product: Product) {
-    await send(`/api/admin/products/${encodeURIComponent(product.id)}`, "PATCH", {
-      showOnHome: !product.showOnHome,
-    });
   }
 
   async function confirmDelete() {
@@ -357,38 +344,28 @@ export default function ProductManager({
               <Badge tone={product.showOnHome ? "on" : "off"}>
                 {product.showOnHome ? "MENÜDE" : "MENÜDE DEĞİL"}
               </Badge>
+              {product.featured && <Badge tone="on">ÖNE ÇIKAN</Badge>}
               {!visibleOnSite(product) && <Badge tone="warn">SİTEDE GÖRÜNMÜYOR</Badge>}
             </div>
 
             <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-line/60">
-              <button
-                onClick={() => toggleActive(product)}
-                disabled={busy}
-                className="focus-ring tag border border-line px-3 py-2 text-smoke hover:border-amber hover:text-amber transition-colors disabled:opacity-40"
-              >
-                {product.active ? "GİZLE" : "YAYINLA"}
-              </button>
-              <button
-                onClick={() => toggleStock(product)}
-                disabled={busy}
-                className="focus-ring tag border border-line px-3 py-2 text-smoke hover:border-amber hover:text-amber transition-colors disabled:opacity-40"
-              >
-                {product.inStock ? "TÜKENDİ" : "STOĞA AL"}
-              </button>
-              <button
-                onClick={() => toggleShowOnHome(product)}
-                disabled={busy}
-                className="focus-ring tag border border-line px-3 py-2 text-smoke hover:border-amber hover:text-amber transition-colors disabled:opacity-40"
-              >
-                {product.showOnHome ? "MENÜDEN ÇIKAR" : "MENÜYE AL"}
-              </button>
+              {/*
+                Satırda anlık aç/kapa düğmesi YOK.
+
+                Eskiden "GİZLE", "TÜKENDİ", "MENÜDEN ÇIKAR", "ÖNE ÇIKAR"
+                düğmeleri tek dokunuşla canlı siteyi değiştiriyordu: onay yok,
+                geri alma yok ve dar ekranda yanlış düğmeye basmak çok kolaydı.
+                Artık bu dört anahtar da ürünün kendi düzenleme formunda —
+                hepsi birlikte değişir, gözden geçirilir ve tek bir "KAYDET"
+                ile yayına girer.
+              */}
               <button
                 onClick={() => {
                   setEditing(product);
                   setDraft(toDraft(product));
                   setError(null);
                 }}
-                className="focus-ring tag border border-line px-3 py-2 text-bone hover:border-amber hover:text-amber transition-colors"
+                className="focus-ring tag border border-amber px-3 py-2 text-amber transition-colors hover:bg-amber hover:text-void"
               >
                 DÜZENLE
               </button>
@@ -464,6 +441,8 @@ function ProductForm({
   onCancel: () => void;
   onSave: () => void;
 }) {
+  useScrollLock(true);
+
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     setDraft({ ...draft, [key]: value });
 
@@ -477,14 +456,17 @@ function ProductForm({
       role="dialog"
       aria-modal="true"
       aria-label={editing ? "Ürünü düzenle" : "Yeni ürün"}
-      className="fixed inset-0 z-[75] bg-void/85 backdrop-blur-sm overflow-y-auto p-4 md:p-8"
+      className="fixed inset-0 z-[75] overflow-y-auto overscroll-contain bg-void/85 backdrop-blur-sm"
     >
+      {/* Kaydırma dış kutuda, ortalama içte — uzun formda pencerenin üstü
+          ekranın dışına itilmesin diye; bkz. iptal penceresi. */}
+      <div className="flex min-h-full items-center justify-center p-4 md:p-8">
       <form
         onSubmit={(e) => {
           e.preventDefault();
           onSave();
         }}
-        className="mx-auto w-full max-w-[720px] ember-surface border border-line p-6 md:p-9"
+        className="w-full max-w-[720px] ember-surface border border-line p-6 md:p-9"
       >
         <h2 className="font-display font-extrabold text-2xl text-bone mb-7">
           {editing ? "Ürünü düzenle" : "Yeni ürün"}
@@ -669,12 +651,26 @@ function ProductForm({
               onLabel="MENÜDE GÖSTER"
               offLabel="MENÜDE GİZLE"
             />
+            <Toggle
+              checked={draft.featured}
+              onChange={(v) => set("featured", v)}
+              onLabel="ÖNE ÇIKAN — VİTRİNDE"
+              offLabel="ÖNE ÇIKAN DEĞİL"
+            />
           </div>
 
           <p className="text-xs text-smoke/70 border border-line bg-void px-4 py-3">
             Ürünün müşteri menüsünde görünmesi için üç anahtarın da açık olması
             gerekir: aktif, stokta ve menüde göster. Biri kapatıldığında ürün
             kaydedilir kaydedilmez menüden düşer; tekrar açıldığında geri gelir.
+          </p>
+
+          <p className="text-xs text-smoke/70 border border-line bg-void px-4 py-3">
+            <span className="text-amber">Öne çıkan</span> ayrı bir şeydir: ürünü
+            menüde tutmaz, ana sayfadaki ve karta sayfasının üstündeki kısa
+            vitrine alır. Menüden düşmüş bir ürün işaretli olsa bile vitrinde
+            görünmez. Hiçbir ürün işaretlenmemişse vitrin menü sırasına göre
+            kendiliğinden doldurulur.
           </p>
 
           {error && <Notice kind="error" message={error} />}
@@ -694,6 +690,7 @@ function ProductForm({
           </Button>
         </div>
       </form>
+      </div>
     </div>
   );
 }

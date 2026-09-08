@@ -2,27 +2,88 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Admin kabuğu: sidebar + içerik alanı.
  *
  * Giriş sayfası kabuğun dışında kalır (henüz oturum yok, menü gösterilmemeli).
  * Masaüstünde sabit sidebar, mobil/tablette açılır-kapanır çekmece.
+ *
+ * Kenar çubuğu ayrıca bir **nöbetçidir**: akıştaki sipariş sayısı "Siparişler"
+ * satırının yanında durur. İşletmeci gün boyu ürün/fiyat ekranlarında
+ * dolaşıyor; sipariş geldiğini öğrenmek için sipariş panosuna gitmiş olması
+ * gerekmemeli.
  */
+
+/**
+ * Sayaç yoklama aralığı.
+ *
+ * Sipariş panosunun kendi yoklaması beş saniyede bir (orada gecikme pahalı).
+ * Buradaki rozet yalnızca "bir şey var" der; on beş saniye, panelin her
+ * sayfasında dönen bir istek için doğru denge.
+ */
+const ORDER_POLL_MS = 15_000;
 
 const NAV = [
   { href: "/admin", label: "Dashboard", exact: true },
+  { href: "/admin/orders", label: "Siparişler", exact: false, pulse: true },
+  { href: "/admin/finanzen", label: "Ciro ve ödemeler", exact: false },
   { href: "/admin/products", label: "Ürünler", exact: false },
   { href: "/admin/categories", label: "Kategoriler", exact: false },
   { href: "/admin/pricing", label: "Fiyat ayarları", exact: false },
+  { href: "/admin/zones", label: "Teslimat bölgeleri", exact: false },
+  { href: "/admin/betrieb", label: "İşletme", exact: false },
 ];
+
+type OrderPulse = { active: number; unacknowledged: number };
+
+/**
+ * Akıştaki sipariş sayısını yoklar.
+ *
+ * Hata sessizce yutulur: rozet bir bilgi kaynağıdır, bir alarm sistemi değil —
+ * geçici bir ağ arızasında panelin her sayfasına kırmızı bir hata basmak,
+ * çözdüğünden çok gürültü üretirdi. Sipariş panosu bağlantı kopmasını zaten
+ * kendi başına bildiriyor.
+ */
+function useOrderPulse(enabled: boolean): OrderPulse | null {
+  const [pulse, setPulse] = useState<OrderPulse | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const controller = new AbortController();
+
+    const load = async () => {
+      try {
+        const response = await fetch("/api/admin/orders/count", {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        setPulse((await response.json()) as OrderPulse);
+      } catch {
+        // Geçici arıza; rozet son bilinen sayıda kalır.
+      }
+    };
+
+    void load();
+    const id = setInterval(() => void load(), ORDER_POLL_MS);
+    return () => {
+      controller.abort();
+      clearInterval(id);
+    };
+  }, [enabled]);
+
+  return pulse;
+}
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  // Giriş ekranında oturum yok: yoklama 401 döndürürdü.
+  const pulse = useOrderPulse(pathname !== "/admin/login");
 
   if (pathname === "/admin/login") return <>{children}</>;
 
@@ -41,19 +102,21 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     <nav className="flex flex-col gap-1">
       {NAV.map((item) => {
         const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+        const badge = item.pulse ? pulse : null;
         return (
           <Link
             key={item.href}
             href={item.href}
             onClick={() => setNavOpen(false)}
             aria-current={active ? "page" : undefined}
-            className={`focus-ring tag px-4 py-3 border-l-2 transition-colors ${
+            className={`focus-ring tag flex items-center gap-3 px-4 py-3 border-l-2 transition-colors ${
               active
                 ? "border-amber text-amber bg-amber/10"
                 : "border-transparent text-smoke hover:text-bone hover:bg-panel"
             }`}
           >
-            {item.label}
+            <span className="min-w-0 flex-1">{item.label}</span>
+            {badge && badge.active > 0 && <OrderBadge pulse={badge} />}
           </Link>
         );
       })}
@@ -67,13 +130,18 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         <Link href="/admin" className="focus-ring font-display font-extrabold text-base">
           SAMİ´S <span className="text-flame">// PANEL</span>
         </Link>
-        <button
-          onClick={() => setNavOpen((v) => !v)}
-          aria-expanded={navOpen}
-          className="focus-ring tag border border-line px-3 py-2 hover:border-amber"
-        >
-          {navOpen ? "KAPAT ✕" : "MENÜ ☰"}
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Menü kapalıyken rozet de kapalı kalmasın: mobilde tek görünen
+              satır bu çubuk. */}
+          {!navOpen && pulse && pulse.active > 0 && <OrderBadge pulse={pulse} />}
+          <button
+            onClick={() => setNavOpen((v) => !v)}
+            aria-expanded={navOpen}
+            className="focus-ring tag border border-line px-3 py-2 hover:border-amber"
+          >
+            {navOpen ? "KAPAT ✕" : "MENÜ ☰"}
+          </button>
+        </div>
       </header>
 
       {navOpen && (
@@ -98,6 +166,35 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
       <main className="flex-1 min-w-0 px-5 md:px-8 lg:px-10 py-8 md:py-10">{children}</main>
     </div>
+  );
+}
+
+/**
+ * Akıştaki sipariş rozeti.
+ *
+ * İki kademe var ve ayrımları önemli: **kırmızı ve yanıp sönen** rozet henüz
+ * "Görüldü" denmemiş sipariş demektir — birinin şimdi bakması gerekir. Sarı
+ * rozet ise mutfakta işlenen siparişleri sayar; bilgi verir, acele istemez.
+ * Tek renk kullanmak ikisini eşitler ve bir süre sonra ikisi de görmezden
+ * gelinirdi.
+ */
+function OrderBadge({ pulse }: { pulse: OrderPulse }) {
+  const fresh = pulse.unacknowledged > 0;
+  return (
+    <span
+      aria-label={
+        fresh
+          ? `${pulse.unacknowledged} yeni sipariş, toplam ${pulse.active} aktif`
+          : `${pulse.active} aktif sipariş`
+      }
+      className={`tag shrink-0 border px-2 py-0.5 tabular-nums ${
+        fresh
+          ? "animate-pulse border-flame bg-flame text-void"
+          : "border-amber/60 bg-amber/15 text-amber"
+      }`}
+    >
+      {pulse.active}
+    </span>
   );
 }
 

@@ -9,15 +9,17 @@ import {
   useRef,
   useState,
 } from "react";
-import type { CartLineInput, Quote } from "@/lib/admin/store";
+import type { CartLineInput } from "@/lib/admin/store";
+import type { CheckoutQuote } from "@/lib/orders/checkout";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 /**
  * Sepet.
  *
- * Önemli kural: sepet **fiyat tutmaz**. Yalnızca "ne seçildi" bilgisini
- * (ürün kimliği / yapılandırıcı seçimleri ve adet) saklar; tutarların tamamı
- * `/api/menu/quote` ucundan, katalogtaki güncel fiyatlardan gelir.
+ * Önemli kural: sepet **fiyat tutmaz**. Yalnızca "ne seçildi, nereye, nasıl"
+ * bilgisini (ürün kimliği / yapılandırıcı seçimleri, adet, teslim biçimi ve
+ * posta kodu) saklar; tutarların tamamı `/api/menu/quote` ucundan, katalogtaki
+ * güncel fiyatlardan gelir — teslimat ücreti ve genel toplam dahil.
  *
  * Bunun üç sonucu var:
  *  - Admin panelinde fiyat değiştiğinde açık sepetler de doğru tutarı gösterir.
@@ -40,6 +42,8 @@ export function lineKey(line: CartLine): string {
 
 type PricingState = "idle" | "loading" | "ready" | "error";
 
+export type Fulfillment = "DELIVERY" | "PICKUP";
+
 /** Birleşim tipinin her üyesinden ayrı ayrı alan siler (düz `Omit` birleşimi ezer). */
 type DistributiveOmit<T, K extends keyof T> = T extends unknown ? Omit<T, K> : never;
 
@@ -49,13 +53,27 @@ export type CartLineDraft = DistributiveOmit<CartLine, "qty"> & { qty?: number }
 type CartState = {
   lines: CartLine[];
   count: number;
-  quote: Quote | null;
+  quote: CheckoutQuote | null;
   pricing: PricingState;
+  /**
+   * localStorage okundu mu.
+   *
+   * İlk render'da sepet her zaman boştur (SSR ile uyuşmazlık olmasın diye);
+   * bunu "sepetiniz boş" diye göstermek, dolu sepetle ödeme sayfasına gelen
+   * müşteriye bir an boş ekran gösterir. Ayrım için bu bayrak gerekiyor.
+   */
+  loaded: boolean;
   isOpen: boolean;
+  /** Teslim biçimi. Teklif ve teslimat ücreti buna göre hesaplanır. */
+  fulfillment: Fulfillment;
+  /** Seçilen teslimat posta kodu; seçilmediyse boş. */
+  zip: string;
   add: (line: CartLineDraft) => void;
   setQty: (key: string, qty: number) => void;
   remove: (key: string) => void;
   clear: () => void;
+  setFulfillment: (value: Fulfillment) => void;
+  setZip: (value: string) => void;
   openCart: () => void;
   closeCart: () => void;
 };
@@ -64,6 +82,11 @@ const CartContext = createContext<CartState | null>(null);
 
 /** v2: eski kayıtlar fiyat içerdiği için bilinçli olarak yeni anahtar kullanılır. */
 const STORAGE_KEY = "the-doner-cart-v2";
+/**
+ * Teslim tercihi sepetten ayrı saklanır: sepet boşalınca silinir, tercih
+ * kalır. Müşteri her seferinde "gel-al" demek zorunda kalmasın.
+ */
+const PREFS_KEY = "the-doner-checkout-prefs-v1";
 const MAX_QTY = 99;
 
 function sanitize(value: unknown): CartLine[] {
@@ -110,8 +133,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const { lang } = useLanguage();
   const [lines, setLines] = useState<CartLine[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [quote, setQuote] = useState<Quote | null>(null);
+  const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [pricing, setPricing] = useState<PricingState>("idle");
+  const [fulfillment, setFulfillmentState] = useState<Fulfillment>("DELIVERY");
+  const [zip, setZipState] = useState("");
 
   // İlk render'da localStorage okunmaz (SSR ile uyuşmazlık olurdu); yükleme
   // bittikten sonra yazmaya başlarız, yoksa boş sepet kayıtlıyı eziyor.
@@ -124,6 +149,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // bozuk kayıt veya erişim engeli: sepet boş başlar
     }
+    try {
+      const raw = localStorage.getItem(PREFS_KEY);
+      if (raw) {
+        const prefs = JSON.parse(raw) as { fulfillment?: unknown; zip?: unknown };
+        if (prefs.fulfillment === "PICKUP" || prefs.fulfillment === "DELIVERY") {
+          setFulfillmentState(prefs.fulfillment);
+        }
+        // Kayıtlı posta kodu bölge listesinden düşmüş olabilir; biçim tutuyorsa
+        // yazılır, geçerliliğine her zaman sunucu karar verir.
+        if (typeof prefs.zip === "string" && /^\d{5}$/.test(prefs.zip)) {
+          setZipState(prefs.zip);
+        }
+      }
+    } catch {
+      // tercih okunamadı: varsayılan teslimat, boş posta kodu
+    }
     setLoaded(true);
   }, []);
 
@@ -135,6 +176,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       // kota dolu / gizli sekme: sepet yine bellekte çalışır
     }
   }, [lines, loaded]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ fulfillment, zip }));
+    } catch {
+      // tercih saklanamadı: oturum boyunca bellekte kalır
+    }
+  }, [fulfillment, zip, loaded]);
 
   // Sepet içeriği ya da dil değiştiğinde tutarları sunucudan tazele.
   const requestId = useRef(0);
@@ -154,11 +204,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     fetch("/api/menu/quote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lines, lang }),
+      body: JSON.stringify({ lines, lang, fulfillment, zip }),
       signal: controller.signal,
     })
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error("quote"))))
-      .then((data: Quote) => {
+      .then((data: CheckoutQuote) => {
         // Yarışan istekler: yalnızca en son isteğin sonucu yazılır.
         if (id !== requestId.current) return;
         setQuote(data);
@@ -171,17 +221,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       });
 
     return () => controller.abort();
-  }, [lines, lang, loaded]);
-
-  // sepet açıkken arka planın kaymasını engelle
-  useEffect(() => {
-    if (!isOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [isOpen]);
+  }, [lines, lang, fulfillment, zip, loaded]);
 
   const add = useCallback((line: CartLineDraft) => {
     const qty = Math.min(MAX_QTY, Math.max(1, Math.floor(line.qty ?? 1)));
@@ -213,6 +253,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const clear = useCallback(() => setLines([]), []);
+
+  const setFulfillment = useCallback((value: Fulfillment) => {
+    setFulfillmentState(value);
+    // Gel-ala geçince posta kodu anlamını yitirir; bırakılırsa teslimata geri
+    // dönüldüğünde eski bölgenin ücreti sessizce geri gelirdi.
+    if (value === "PICKUP") setZipState("");
+  }, []);
+
+  const setZip = useCallback((value: string) => {
+    setZipState(value.replace(/\D/g, "").slice(0, 5));
+  }, []);
+
   const openCart = useCallback(() => setIsOpen(true), []);
   const closeCart = useCallback(() => setIsOpen(false), []);
 
@@ -223,15 +275,36 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       count,
       quote,
       pricing,
+      loaded,
       isOpen,
+      fulfillment,
+      zip,
       add,
       setQty,
       remove,
       clear,
+      setFulfillment,
+      setZip,
       openCart,
       closeCart,
     };
-  }, [lines, quote, pricing, isOpen, add, setQty, remove, clear, openCart, closeCart]);
+  }, [
+    lines,
+    quote,
+    pricing,
+    loaded,
+    isOpen,
+    fulfillment,
+    zip,
+    add,
+    setQty,
+    remove,
+    clear,
+    setFulfillment,
+    setZip,
+    openCart,
+    closeCart,
+  ]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

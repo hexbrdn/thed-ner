@@ -35,20 +35,26 @@ export default function Footer() {
             <p className="tag text-smoke mb-4">{t.footer.navigationTitle}</p>
             <ul className="space-y-2 text-sm text-bone">
               <li><Link href="/" className="hover:text-amber transition-colors">{t.footer.links.home}</Link></li>
-              <li><Link href="/#unternehmen" className="hover:text-amber transition-colors">{t.footer.links.company}</Link></li>
+              <li><Link href="/ueber-uns" className="hover:text-amber transition-colors">{t.footer.links.company}</Link></li>
               <li><Link href="/#filialen" className="hover:text-amber transition-colors">{t.footer.links.branches}</Link></li>
               {/* Ürünler ana sayfadan kendi sayfasına taşındı. */}
               <li><Link href="/speisekarte" className="hover:text-amber transition-colors">{t.footer.links.products}</Link></li>
-              <li><Link href="/#franchise" className="hover:text-amber transition-colors">{t.footer.links.franchise}</Link></li>
-              <li><Link href="/#blog" className="hover:text-amber transition-colors">{t.footer.links.blog}</Link></li>
+              <li><Link href="/ueber-uns#franchise" className="hover:text-amber transition-colors">{t.footer.links.franchise}</Link></li>
+              <li><Link href="/ueber-uns#blog" className="hover:text-amber transition-colors">{t.footer.links.blog}</Link></li>
             </ul>
           </div>
 
           <div>
             <p className="tag text-smoke mb-4">{t.footer.legalTitle}</p>
             <ul className="space-y-2 text-sm text-bone">
-              <li><Link href="/" className="hover:text-amber transition-colors">{t.footer.impressum}</Link></li>
-              <li><Link href="/" className="hover:text-amber transition-colors">{t.footer.privacy}</Link></li>
+              {/* DDG § 5: Impressum her sayfadan iki tıkla ulaşılabilir olmak
+                  zorunda. Bu bağlantılar daha önce "/" gösteriyordu — yani
+                  Impressum fiilen yoktu. */}
+              <li><Link href="/impressum" className="hover:text-amber transition-colors">{t.footer.impressum}</Link></li>
+              <li><Link href="/datenschutz" className="hover:text-amber transition-colors">{t.footer.privacy}</Link></li>
+              <li><Link href="/agb" className="hover:text-amber transition-colors">{t.footer.terms}</Link></li>
+              <li><Link href="/widerruf" className="hover:text-amber transition-colors">{t.footer.withdrawal}</Link></li>
+              <li><Link href="/allergene" className="hover:text-amber transition-colors">{t.footer.allergens}</Link></li>
             </ul>
           </div>
 

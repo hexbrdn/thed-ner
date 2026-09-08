@@ -10,7 +10,7 @@ export default function News() {
       <div className="max-w-[1400px] mx-auto px-6 md:px-10">
         <div className="mb-14">
           <p className="tag text-flame mb-3">{t.news.tag}</p>
-          <h2 className="font-display font-extrabold text-[8vw] md:text-[3.2vw] leading-[0.95] text-bone">
+          <h2 className="section-title font-display font-extrabold text-bone">
             {t.news.title}
           </h2>
         </div>
